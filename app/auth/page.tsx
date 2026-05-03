@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/contexts/auth-context";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { Eye, EyeOff, Mail } from "lucide-react";
 
-export default function AuthPage() {
+function AuthPageContent() {
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,11 +28,10 @@ export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check if URL has tab parameter
-  useState(() => {
+  useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam === "signup") setTab("signup");
-  });
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -794,5 +793,13 @@ export default function AuthPage() {
         />
       </motion.div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthPageContent />
+    </Suspense>
   );
 }
