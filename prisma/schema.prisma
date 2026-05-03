@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  expenses  Expense[]
+  categories Category[]
+  gmailConnections GmailConnection[]
+  membership Membership?
+  createdAt DateTime @default(now())
+}
+
+model Membership {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  status               String   @default("inactive")
+  plan                 String   @default("plus_monthly")
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model GmailConnection {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleEmail           String?
+  encryptedRefreshToken String
+  scope                 String?
+  connectedAt           DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([userId])
+  @@index([userId])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  icon      String   @default("Package")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  amount      Float
+  category    String
+  date        DateTime @default(now())
+  description String?
+  source      String   @default("manual") // "manual", "voice", or "gmail"
+  recordType  String   @default("expense") // "expense", "income", "liability", or "reimbursement"
+  isRecurring Boolean  @default(false)
+  recurringInterval String?
+  status      String   @default("completed") // "completed", "open", or "settled"
+  counterparty String?
+  gmailId     String?  // Store Gmail message ID to avoid duplicates
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, gmailId])
+  @@index([userId])
+  @@index([date])
+  @@index([category])
+  @@index([source])
+}
