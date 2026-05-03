@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/auth-context";
 import type { AuthError } from "@/app/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -26,12 +26,11 @@ function AuthPageContent() {
   const [resetSent, setResetSent] = useState(false);
   const { signIn, signUp, resetPassword } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const tabParam = searchParams.get("tab");
+    const tabParam = new URLSearchParams(window.location.search).get("tab");
     if (tabParam === "signup") setTab("signup");
-  }, [searchParams]);
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -796,10 +795,4 @@ function AuthPageContent() {
   );
 }
 
-export default function AuthPage() {
-  return (
-    <Suspense fallback={null}>
-      <AuthPageContent />
-    </Suspense>
-  );
-}
+export default AuthPageContent;
