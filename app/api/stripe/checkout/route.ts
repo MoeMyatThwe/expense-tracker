@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { getAppBaseUrl, MEMBERSHIP_PLAN, stripe } from "@/lib/stripe";
+import { getAppBaseUrl, getStripe, MEMBERSHIP_PLAN } from "@/lib/stripe";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   const membership = await prisma.membership.findUnique({
     where: { userId: user.id },
   });
+  const stripe = getStripe();
 
   let stripeCustomerId = membership?.stripeCustomerId || null;
   if (!stripeCustomerId) {

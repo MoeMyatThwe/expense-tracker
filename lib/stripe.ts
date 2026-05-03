@@ -8,15 +8,21 @@ export const MEMBERSHIP_PLAN = {
   amount: 50,
 } as const;
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+let stripeClient: Stripe | null = null;
 
-if (!stripeSecretKey) {
-  throw new Error("STRIPE_SECRET_KEY is not configured");
+export function getStripe() {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+
+  stripeClient ??= new Stripe(stripeSecretKey, {
+    apiVersion: "2026-04-22.dahlia",
+  });
+
+  return stripeClient;
 }
-
-export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2026-04-22.dahlia",
-});
 
 export function getAppBaseUrl(request: Request) {
   const origin = request.headers.get("origin");

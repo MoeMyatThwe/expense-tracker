@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { MEMBERSHIP_PLAN, stripe } from "@/lib/stripe";
+import { getStripe, MEMBERSHIP_PLAN } from "@/lib/stripe";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing session id" }, { status: 400 });
   }
 
+  const stripe = getStripe();
   const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
     expand: ["subscription", "customer"],
   });

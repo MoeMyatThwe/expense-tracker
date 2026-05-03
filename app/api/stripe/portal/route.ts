@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { getAppBaseUrl, stripe } from "@/lib/stripe";
+import { getAppBaseUrl, getStripe } from "@/lib/stripe";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     );
   }
 
+  const stripe = getStripe();
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: membership.stripeCustomerId,
     return_url: `${getAppBaseUrl(request)}/profile`,
