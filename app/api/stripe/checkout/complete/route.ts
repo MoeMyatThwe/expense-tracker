@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { getStripe, MEMBERSHIP_PLAN } from "@/lib/stripe";
+import {
+  getStripe,
+  MANUAL_MEMBERSHIP_PLAN,
+  MEMBERSHIP_PLAN,
+} from "@/lib/stripe";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -21,6 +25,12 @@ async function getCurrentUser(request: Request) {
 function getPeriodEnd(subscription: Stripe.Subscription) {
   const periodEnd = subscription.items.data[0]?.current_period_end;
   return periodEnd ? new Date(periodEnd * 1000) : null;
+}
+
+function getManualPeriodEnd() {
+  const periodEnd = new Date();
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  return periodEnd;
 }
 
 export async function POST(request: Request) {
@@ -53,6 +63,38 @@ export async function POST(request: Request) {
     typeof checkoutSession.customer === "string"
       ? checkoutSession.customer
       : checkoutSession.customer?.id || null;
+
+  if (checkoutSession.mode === "payment") {
+    if (!customerId || checkoutSession.payment_status !== "paid") {
+      return NextResponse.json(
+        { error: "Checkout payment is not complete" },
+        { status: 400 },
+      );
+    }
+
+    const membership = await prisma.membership.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: null,
+        status: "active",
+        plan: MANUAL_MEMBERSHIP_PLAN.id,
+        currentPeriodEnd: getManualPeriodEnd(),
+        cancelAtPeriodEnd: true,
+      },
+      update: {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: null,
+        status: "active",
+        plan: MANUAL_MEMBERSHIP_PLAN.id,
+        currentPeriodEnd: getManualPeriodEnd(),
+        cancelAtPeriodEnd: true,
+      },
+    });
+
+    return NextResponse.json({ membership });
+  }
 
   if (!subscription || !customerId) {
     return NextResponse.json(

@@ -99,6 +99,31 @@ const translations = {
     membershipDesc: "Subscribe to unlock premium receipt scanning and tracking features.",
     membershipActive: "Your membership is {status}.",
     subscribe: "Subscribe",
+    renewalPreference: "Renewal preference",
+    autoRenew: "Auto renew",
+    manualRenew: "Manual renew",
+    autoRenewDesc: "Renews every month until you cancel.",
+    manualRenewDesc: "Pay for one month only; renew again later.",
+    continuePayment: "Continue",
+    renewManually: "Renew",
+    cancelAutoRenew: "Cancel auto renewal",
+    cancelAutoRenewConfirm:
+      "Cancel auto renewal? You can keep using your membership until the current paid period ends.",
+    autoRenewCancelled: "Auto renewal cancelled",
+    autoRenewCancelScheduled:
+      "Auto renewal is cancelled. You can keep using membership until the paid period ends.",
+    membershipExpiresOn: "Expires on {date}",
+    membershipRenewsOn: "Renews on {date}",
+    membershipEndsOn: "Ends on {date}",
+    paymentSuccessTitle: "Payment completed",
+    paymentSuccessDesc: "You are back in the app. Your membership status and payment history are updated below.",
+    paymentCancelledTitle: "Payment cancelled",
+    paymentCancelledDesc: "No payment was made. You can choose a renewal option and try again anytime.",
+    paymentHistory: "Payment history",
+    paymentHistoryHidden: "Details are hidden here. Open the history to review payments.",
+    paymentHistoryDesc: "Review your recent membership payments and invoices.",
+    noPaymentHistory: "No payment history yet.",
+    view: "View",
     manageBilling: "Manage Billing",
     membershipActivated: "Membership activated",
     paymentCancelled: "Payment cancelled",
@@ -330,7 +355,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       key: TranslationKey,
       values: Record<string, string | number> = {},
     ) => {
-      const template = String(translations[language][key] || translations.en[key]);
+      const dictionary = translations[language] as Partial<
+        Record<TranslationKey, string>
+      >;
+      const template = String(dictionary[key] || translations.en[key]);
       return Object.entries(values).reduce(
         (text, [name, replacement]) =>
           text.replaceAll(`{${name}}`, String(replacement)),

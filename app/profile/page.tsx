@@ -21,6 +21,13 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/app/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CinnamorollLoader } from "@/components/loading-states";
@@ -62,16 +69,33 @@ export default function ProfilePage() {
     connection?: { googleEmail?: string | null } | null;
   }>({ connected: false });
   const [gmailLoading, setGmailLoading] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState<"success" | "cancelled" | null>(
+    null,
+  );
   const [membership, setMembership] = useState<{
     active: boolean;
-    plan: { name: string; amount: number; currency: string };
+    plan: { id: string; name: string; amount: number; currency: string };
+    billingHistory?: {
+      id: string;
+      type: string;
+      status: string;
+      amount: number;
+      currency: string;
+      date: string;
+      description: string;
+      hostedInvoiceUrl?: string | null;
+    }[];
     membership?: {
       status: string;
+      plan?: string;
       currentPeriodEnd?: string | null;
       cancelAtPeriodEnd?: boolean;
+      stripeSubscriptionId?: string | null;
     } | null;
   } | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
+  const [renewalMode, setRenewalMode] = useState<"auto" | "manual">("auto");
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
 
   useEffect(() => {
     setFontSize(getSavedFontSize());
@@ -106,9 +130,11 @@ export default function ProfilePage() {
     }
 
     if (stripeResult === "success" && stripeSessionId) {
+      setPaymentNotice("success");
       completeStripeCheckout(stripeSessionId);
       router.replace("/profile");
     } else if (stripeResult === "cancelled") {
+      setPaymentNotice("cancelled");
       toast.error(t("paymentCancelled"));
       router.replace("/profile");
     }
@@ -215,8 +241,10 @@ export default function ProfilePage() {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify({ renewalMode }),
       });
 
       const data = await response.json();
@@ -262,6 +290,47 @@ export default function ProfilePage() {
       toast.error(
         error instanceof Error ? error.message : "Failed to open billing portal",
       );
+      setMembershipLoading(false);
+    }
+  };
+
+  const cancelSubscription = async () => {
+    if (!confirm(t("cancelAutoRenewConfirm"))) {
+      return;
+    }
+
+    setMembershipLoading(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const response = await fetch("/api/stripe/subscription/cancel", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to cancel subscription");
+      }
+
+      toast.success(t("autoRenewCancelled"));
+      await fetchMembershipStatus();
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to cancel subscription",
+      );
+    } finally {
       setMembershipLoading(false);
     }
   };
@@ -365,6 +434,36 @@ export default function ProfilePage() {
       setPasswordLoading(false);
     }
   };
+
+  const membershipPeriodEnd = membership?.membership?.currentPeriodEnd
+    ? new Date(membership.membership.currentPeriodEnd)
+    : null;
+  const membershipEndLabel = membershipPeriodEnd
+    ? membershipPeriodEnd.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "";
+  const isManualMembership =
+    membership?.membership?.plan === "plus_manual_month" ||
+    (!membership?.membership?.stripeSubscriptionId &&
+      membership?.membership?.cancelAtPeriodEnd);
+  const hasAutoRenewSubscription =
+    !isManualMembership &&
+    Boolean(membership?.membership?.stripeSubscriptionId) &&
+    membership?.membership?.status !== "canceled";
+  const canCancelAutoRenew =
+    hasAutoRenewSubscription &&
+    !membership?.membership?.cancelAtPeriodEnd;
+  const membershipAction = membership?.active || hasAutoRenewSubscription
+    ? isManualMembership
+      ? startMembershipCheckout
+      : openBillingPortal
+    : startMembershipCheckout;
+  const billingHistory = membership?.billingHistory || [];
+  const formatBillingAmount = (amount: number, currency: string) =>
+    `${currency.toUpperCase()} ${(amount / 100).toFixed(2)}`;
 
   if (authLoading) {
     return (
@@ -525,8 +624,9 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
-                <div className="flex min-w-0 items-center gap-3">
+              <div className="space-y-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
                   <CreditCard className="h-5 w-5 shrink-0 text-[#859BB2]" />
                   <div className="min-w-0">
                     <p className="font-medium text-gray-800 dark:text-gray-100">
@@ -540,29 +640,160 @@ export default function ProfilePage() {
                           })
                         : t("membershipDesc")}
                     </p>
+                    {membership?.active && membershipEndLabel ? (
+                      <p className="mt-1 text-xs font-medium text-[#859BB2]">
+                        {membership.membership?.cancelAtPeriodEnd
+                          ? t("membershipEndsOn", {
+                              date: membershipEndLabel,
+                            })
+                          : isManualMembership
+                          ? t("membershipExpiresOn", {
+                              date: membershipEndLabel,
+                            })
+                          : t("membershipRenewsOn", {
+                              date: membershipEndLabel,
+                            })}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-xs font-medium text-[#859BB2]">
                       {membership?.plan
                         ? `${membership.plan.currency.toUpperCase()} ${(membership.plan.amount / 100).toFixed(2)} / ${t("month")}`
                         : `SGD 4.99 / ${t("month")}`}
                     </p>
                   </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-2">
+                    <Button
+                      type="button"
+                      onClick={membershipAction}
+                      disabled={membershipLoading}
+                      className="h-10 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7]"
+                    >
+                      {membershipLoading
+                        ? t("loading")
+                        : membership?.active
+                          ? isManualMembership
+                            ? t("renewManually")
+                            : t("manageBilling")
+                          : t("continuePayment")}
+                    </Button>
+                    {canCancelAutoRenew ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={cancelSubscription}
+                        disabled={membershipLoading}
+                        className="h-10 rounded-xl border-[#D4E5F7] bg-white/80 px-4 text-[#64748b] hover:bg-[#E1EDFD]"
+                      >
+                        {t("cancelAutoRenew")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  onClick={
-                    membership?.active
-                      ? openBillingPortal
-                      : startMembershipCheckout
-                  }
-                  disabled={membershipLoading}
-                  className="h-10 shrink-0 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7]"
-                >
-                  {membershipLoading
-                    ? t("loading")
-                    : membership?.active
-                      ? t("manageBilling")
-                      : t("subscribe")}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["auto", "manual"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setRenewalMode(mode)}
+                      className={`rounded-xl border px-3 py-2 text-left transition ${
+                        renewalMode === mode
+                          ? "border-[#9AC4E7] bg-[#D4E5F7] text-gray-800 shadow-sm"
+                          : "border-[#E1EDFD] bg-white/80 text-gray-600 hover:bg-[#E1EDFD]"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold">
+                        {mode === "auto" ? t("autoRenew") : t("manualRenew")}
+                      </span>
+                      <span className="mt-1 block text-xs leading-snug text-[#859BB2]">
+                        {mode === "auto"
+                          ? t("autoRenewDesc")
+                          : t("manualRenewDesc")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {paymentNotice ? (
+                  <div className="rounded-xl border border-[#D4E5F7] bg-[#E1EDFD]/70 px-4 py-3 text-sm text-gray-700">
+                    <p className="font-semibold text-gray-800">
+                      {paymentNotice === "success"
+                        ? t("paymentSuccessTitle")
+                        : t("paymentCancelledTitle")}
+                    </p>
+                    <p className="mt-1 text-[#64748b]">
+                      {paymentNotice === "success"
+                        ? t("paymentSuccessDesc")
+                        : t("paymentCancelledDesc")}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E1EDFD] bg-white/80 p-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {t("paymentHistory")}
+                      </p>
+                      <span className="rounded-full bg-[#E1EDFD] px-2 py-1 text-xs font-medium text-[#859BB2]">
+                        {billingHistory.length}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[#859BB2]">
+                      {billingHistory.length > 0
+                        ? t("paymentHistoryHidden")
+                        : t("noPaymentHistory")}
+                    </p>
+                  </div>
+                  {billingHistory.length > 0 ? (
+                    <div className="hidden">
+                      {billingHistory.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-3 rounded-lg bg-[#F8FBFF] px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-gray-800">
+                              {item.description}
+                            </p>
+                            <p className="text-xs text-[#859BB2]">
+                              {new Date(item.date).toLocaleDateString(
+                                undefined,
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )}{" "}
+                              · {item.status}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-sm font-semibold text-[#859BB2]">
+                            {formatBillingAmount(item.amount, item.currency)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="hidden">
+                      {t("noPaymentHistory")}
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPaymentHistoryOpen(true)}
+                    disabled={billingHistory.length === 0}
+                    className="h-9 shrink-0 rounded-xl border-[#D4E5F7] bg-[#E1EDFD]/70 px-4 text-[#64748b] hover:bg-[#D4E5F7]"
+                  >
+                    {t("view")}
+                  </Button>
+                </div>
+                {membership?.active &&
+                  membership.membership?.cancelAtPeriodEnd &&
+                  !isManualMembership ? (
+                  <p className="rounded-xl border border-[#D4E5F7] bg-[#E1EDFD]/60 px-4 py-3 text-sm text-[#64748b]">
+                    {t("autoRenewCancelScheduled")}
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
@@ -671,6 +902,45 @@ export default function ProfilePage() {
           </motion.div>
         </div>
       </div>
+      <Dialog open={paymentHistoryOpen} onOpenChange={setPaymentHistoryOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border-2 border-[#D4E5F7] p-0 sm:max-w-lg">
+          <div className="flex max-h-[calc(100dvh-2rem)] flex-col bg-[#F8FBFF]">
+            <DialogHeader className="shrink-0 space-y-2 px-6 pt-6">
+              <DialogTitle className="text-2xl text-[#859BB2]">
+                {t("paymentHistory")}
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                {t("paymentHistoryDesc")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
+              {billingHistory.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[#E1EDFD] bg-white px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-800">
+                      {item.description}
+                    </p>
+                    <p className="text-xs text-[#859BB2]">
+                      {new Date(item.date).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}{" "}
+                      - {item.status}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-[#859BB2]">
+                    {formatBillingAmount(item.amount, item.currency)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

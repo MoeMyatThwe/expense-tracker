@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { getAppBaseUrl, getStripe, MEMBERSHIP_PLAN } from "@/lib/stripe";
+import {
+  getAppBaseUrl,
+  getStripe,
+  MANUAL_MEMBERSHIP_PLAN,
+  MEMBERSHIP_PLAN,
+} from "@/lib/stripe";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -24,6 +29,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let renewalMode: "auto" | "manual" = "auto";
+  try {
+    const body = await request.json();
+    renewalMode = body?.renewalMode === "manual" ? "manual" : "auto";
+  } catch {
+    renewalMode = "auto";
+  }
+
+  const plan =
+    renewalMode === "manual" ? MANUAL_MEMBERSHIP_PLAN : MEMBERSHIP_PLAN;
   const baseUrl = getAppBaseUrl(request);
   const membership = await prisma.membership.findUnique({
     where: { userId: user.id },
@@ -44,44 +59,82 @@ export async function POST(request: Request) {
         userId: user.id,
         stripeCustomerId,
         status: "incomplete",
-        plan: MEMBERSHIP_PLAN.id,
+        plan: plan.id,
       },
       update: {
         stripeCustomerId,
-        plan: MEMBERSHIP_PLAN.id,
+        plan: plan.id,
       },
     });
   }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
+  const commonSessionData = {
     customer: stripeCustomerId,
-    payment_method_types: ["card"],
+    payment_method_types: ["card"] as ["card"],
     line_items: [
       {
         price_data: {
-          currency: MEMBERSHIP_PLAN.currency,
+          currency: plan.currency,
           product_data: {
-            name: MEMBERSHIP_PLAN.name,
-            description: MEMBERSHIP_PLAN.description,
+            name:
+              renewalMode === "manual"
+                ? `${plan.name} - One Month`
+                : plan.name,
+            description: plan.description,
           },
-          unit_amount: MEMBERSHIP_PLAN.amount,
-          recurring: { interval: "month" },
+          unit_amount: plan.amount,
+          ...(renewalMode === "auto"
+            ? { recurring: { interval: "month" as const } }
+            : {}),
         },
         quantity: 1,
       },
     ],
     success_url: `${baseUrl}/profile?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/profile?stripe=cancelled`,
-    subscription_data: {
-      metadata: {
-        userId: user.id,
-        plan: MEMBERSHIP_PLAN.id,
-      },
-    },
     metadata: {
       userId: user.id,
-      plan: MEMBERSHIP_PLAN.id,
+      plan: plan.id,
+      renewalMode,
+    },
+  };
+
+  const session =
+    renewalMode === "manual"
+      ? await stripe.checkout.sessions.create({
+          ...commonSessionData,
+          mode: "payment",
+          payment_intent_data: {
+            metadata: {
+              userId: user.id,
+              plan: plan.id,
+              renewalMode,
+            },
+          },
+        })
+      : await stripe.checkout.sessions.create({
+          ...commonSessionData,
+          mode: "subscription",
+          subscription_data: {
+            metadata: {
+              userId: user.id,
+              plan: plan.id,
+              renewalMode,
+            },
+          },
+        });
+
+  await prisma.membership.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      stripeCustomerId,
+      status: "incomplete",
+      plan: plan.id,
+    },
+    update: {
+      stripeCustomerId,
+      plan: plan.id,
     },
   });
 
