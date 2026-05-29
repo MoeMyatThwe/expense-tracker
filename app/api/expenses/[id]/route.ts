@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { expenseUpdateSchema } from "@/lib/validation";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -28,7 +29,18 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    const parsed = expenseUpdateSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid expense payload",
+          issues: parsed.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
     const {
       title,
       amount,
@@ -41,10 +53,10 @@ export async function PUT(
       recurringInterval,
       status,
       counterparty,
-    } = body;
+    } = parsed.data;
 
     // Build update data object with only provided fields
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title;
     if (amount !== undefined) updateData.amount = parseFloat(amount);
     if (category !== undefined) updateData.category = category;
@@ -52,11 +64,13 @@ export async function PUT(
     if (description !== undefined) updateData.description = description;
     if (source !== undefined) updateData.source = source;
     if (recordType !== undefined) updateData.recordType = recordType;
-    if (isRecurring !== undefined) updateData.isRecurring = Boolean(isRecurring);
+    if (isRecurring !== undefined)
+      updateData.isRecurring = Boolean(isRecurring);
     if (recurringInterval !== undefined)
       updateData.recurringInterval = isRecurring ? recurringInterval : null;
     if (status !== undefined) updateData.status = status;
-    if (counterparty !== undefined) updateData.counterparty = counterparty || null;
+    if (counterparty !== undefined)
+      updateData.counterparty = counterparty || null;
 
     const existingExpense = await prisma.expense.findFirst({
       where: { id, userId: user.id },

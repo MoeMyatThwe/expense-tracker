@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import {
-  CATEGORY_ICONS,
-  normalizeCategoryName,
-} from "@/lib/category-options";
+import { CATEGORY_ICONS, normalizeCategoryName } from "@/lib/category-options";
+import { categoryUpdateSchema } from "@/lib/validation";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -32,9 +30,22 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const name = normalizeCategoryName(String(body.name || ""));
-    const icon = CATEGORY_ICONS.includes(body.icon) ? body.icon : undefined;
+    const parsed = categoryUpdateSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid category payload",
+          issues: parsed.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const name = normalizeCategoryName(parsed.data.name);
+    const icon = CATEGORY_ICONS.includes(parsed.data.icon)
+      ? parsed.data.icon
+      : undefined;
 
     if (!name) {
       return NextResponse.json(

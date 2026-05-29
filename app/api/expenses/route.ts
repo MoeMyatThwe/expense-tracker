@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { expenseCreateSchema } from "@/lib/validation";
 
 // Helper to get current user
 async function getCurrentUser(request: Request) {
@@ -47,7 +48,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const parsed = expenseCreateSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid expense payload",
+          issues: parsed.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
     const {
       title,
       amount,
@@ -60,13 +72,13 @@ export async function POST(request: Request) {
       recurringInterval,
       status,
       counterparty,
-    } = body;
+    } = parsed.data;
 
     const expense = await prisma.expense.create({
       data: {
         userId: user.id,
         title,
-        amount: parseFloat(amount),
+        amount,
         category,
         date: new Date(date),
         description,

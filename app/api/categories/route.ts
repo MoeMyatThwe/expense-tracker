@@ -6,6 +6,7 @@ import {
   DEFAULT_CATEGORIES,
   normalizeCategoryName,
 } from "@/lib/category-options";
+import { categoryCreateSchema } from "@/lib/validation";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -76,10 +77,21 @@ export async function POST(request: Request) {
 
     await ensureUserAndDefaultCategories(user);
 
-    const body = await request.json();
-    const name = normalizeCategoryName(String(body.name || ""));
-    const icon = CATEGORY_ICONS.includes(body.icon)
-      ? body.icon
+    const parsed = categoryCreateSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid category payload",
+          issues: parsed.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const name = normalizeCategoryName(parsed.data.name);
+    const icon = CATEGORY_ICONS.includes(parsed.data.icon)
+      ? parsed.data.icon
       : CATEGORY_ICONS[0];
 
     if (!name) {

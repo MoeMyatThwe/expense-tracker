@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { userCreateSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
-    const { id, email } = await request.json();
+    const parsed = userCreateSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid user payload",
+          issues: parsed.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const { id, email } = parsed.data;
 
     const user = await prisma.user.upsert({
       where: { id },
