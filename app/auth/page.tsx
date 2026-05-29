@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Image from "next/image";
-import { Eye, EyeOff, Github, Globe, Mail } from "lucide-react";
+import { Eye, EyeOff, Mail } from "lucide-react";
 
 function AuthPageContent() {
   const [tab, setTab] = useState<"signin" | "signup">("signin");
@@ -229,20 +229,35 @@ function AuthPageContent() {
               variant="outline"
               onClick={() => handleOAuthSignIn("google")}
               disabled={loading}
-              className="w-full rounded-xl border-2 py-3 font-semibold"
+              className="w-full rounded-xl border-2 py-3 font-semibold flex items-center justify-center"
             >
-              <Globe size={16} />
+              <span className="mr-2" aria-hidden>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 48 48"
+                  xmlns="http://www.w3.org/2000/svg"
+                  role="img"
+                >
+                  <path
+                    fill="#EA4335"
+                    d="M24 9.5c3.9 0 7.4 1.5 10.1 3.9l7.4-7.4C36.9 2.7 30.9 0 24 0 14 0 5.5 5.7 1.9 13.9l8.9 6.9C12.8 14 18 9.5 24 9.5z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M46.5 24c0-1.6-.1-3.1-.4-4.6H24v9.1h12.7c-.5 2.7-2 4.9-4.2 6.4l6.6 5.1C43.9 36.9 46.5 30.9 46.5 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M8.8 28.8c-.6-1.9-.9-4-.9-6.1s.3-4.2.9-6.1L0 9.7C-1.3 12.9-2 16.4-2 20c0 3.6.7 7.1 2 10.3l10.8-1.5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M24 48c6.9 0 12.9-2.3 17.2-6.1l-8.2-6.3C30.8 36.7 27.5 38 24 38c-6 0-11.2-4.5-12.8-10.8L2.4 33.4C6 41.6 14 48 24 48z"
+                  />
+                </svg>
+              </span>
               Continue with Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOAuthSignIn("github")}
-              disabled={loading}
-              className="w-full rounded-xl border-2 py-3 font-semibold"
-            >
-              <Github size={16} />
-              Continue with GitHub
             </Button>
           </div>
 
