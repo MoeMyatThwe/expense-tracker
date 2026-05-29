@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const auth = createOAuthClient();
   const url = auth.generateAuthUrl({
     access_type: "offline",
-    prompt: "consent",
+    prompt: "consent select_account",
     scope: GMAIL_SCOPES,
     state: createOAuthState(user.id),
   });
