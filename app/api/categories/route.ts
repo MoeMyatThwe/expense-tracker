@@ -111,9 +111,11 @@ export async function POST(request: Request) {
     }
 
     const name = normalizeCategoryName(parsed.data.name);
-    const icon = CATEGORY_ICONS.includes(parsed.data.icon)
-      ? parsed.data.icon
-      : CATEGORY_ICONS[0];
+    const icon =
+      typeof parsed.data.icon === "string" &&
+      CATEGORY_ICONS.includes(parsed.data.icon)
+        ? parsed.data.icon
+        : CATEGORY_ICONS[0];
 
     if (!name) {
       return NextResponse.json(

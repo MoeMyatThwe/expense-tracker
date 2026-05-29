@@ -20,6 +20,9 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error?: AuthError }>;
   signIn: (email: string, password: string) => Promise<{ error?: AuthError }>;
+  signInWithProvider: (
+    provider: "google" | "github",
+  ) => Promise<{ error?: AuthError }>;
   resetPassword: (email: string) => Promise<{ error?: AuthError }>;
   signOut: () => Promise<void>;
 }
@@ -206,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 
@@ -236,6 +239,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       router.push("/");
+      return {};
+    } catch (error: unknown) {
+      const authError = getErrorMessage(error);
+      return { error: authError };
+    }
+  };
+
+  const signInWithProvider = async (provider: "google" | "github") => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        const authError = getErrorMessage(error);
+        return { error: authError };
+      }
+
       return {};
     } catch (error: unknown) {
       const authError = getErrorMessage(error);
@@ -274,7 +298,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, signUp, signIn, resetPassword, signOut }}
+      value={{
+        user,
+        loading,
+        signUp,
+        signIn,
+        signInWithProvider,
+        resetPassword,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

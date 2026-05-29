@@ -58,7 +58,9 @@ export async function PUT(
     // Build update data object with only provided fields
     const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title;
-    if (amount !== undefined) updateData.amount = parseFloat(amount);
+    if (amount !== undefined)
+      updateData.amount =
+        typeof amount === "string" ? parseFloat(amount) : amount;
     if (category !== undefined) updateData.category = category;
     if (date !== undefined) updateData.date = new Date(date);
     if (description !== undefined) updateData.description = description;

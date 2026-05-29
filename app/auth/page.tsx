@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Image from "next/image";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { Eye, EyeOff, Github, Globe, Mail } from "lucide-react";
 
 function AuthPageContent() {
   const [tab, setTab] = useState<"signin" | "signup">("signin");
@@ -24,7 +24,7 @@ function AuthPageContent() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signInWithProvider, signUp, resetPassword } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -108,6 +108,29 @@ function AuthPageContent() {
       setError(authError);
     } finally {
       setForgotLoading(false);
+    }
+  };
+
+  const handleOAuthSignIn = async (provider: "google" | "github") => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const result = await signInWithProvider(provider);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const authError: AuthError = {
+        code: "unknown",
+        message,
+        userMessage: "An unexpected error occurred. Please try again.",
+      };
+      setError(authError);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -198,6 +221,29 @@ function AuthPageContent() {
             >
               Sign Up
             </button>
+          </div>
+
+          <div className="grid gap-3 mb-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOAuthSignIn("google")}
+              disabled={loading}
+              className="w-full rounded-xl border-2 py-3 font-semibold"
+            >
+              <Globe size={16} />
+              Continue with Google
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOAuthSignIn("github")}
+              disabled={loading}
+              className="w-full rounded-xl border-2 py-3 font-semibold"
+            >
+              <Github size={16} />
+              Continue with GitHub
+            </Button>
           </div>
 
           {/* Form */}
