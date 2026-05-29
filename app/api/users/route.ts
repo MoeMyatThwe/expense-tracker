@@ -1,9 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { userCreateSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(request, {
+      limit: 10,
+      windowMs: 60_000,
+      keyPrefix: "users:create",
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(
+              Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+            ),
+          },
+        },
+      );
+    }
+
     const parsed = userCreateSchema.safeParse(await request.json());
 
     if (!parsed.success) {

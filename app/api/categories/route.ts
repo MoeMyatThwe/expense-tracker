@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   CATEGORY_ICONS,
   DEFAULT_CATEGORIES,
@@ -69,6 +70,26 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(request, {
+      limit: 20,
+      windowMs: 60_000,
+      keyPrefix: "categories:create",
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(
+              Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+            ),
+          },
+        },
+      );
+    }
+
     const user = await getCurrentUser(request);
 
     if (!user) {
