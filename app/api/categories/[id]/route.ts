@@ -43,9 +43,10 @@ export async function PATCH(
     }
 
     const name = normalizeCategoryName(parsed.data.name);
-    const icon = CATEGORY_ICONS.includes(parsed.data.icon)
-      ? parsed.data.icon
-      : undefined;
+    const icon =
+      parsed.data.icon && CATEGORY_ICONS.includes(parsed.data.icon)
+        ? parsed.data.icon
+        : undefined;
 
     if (!name) {
       return NextResponse.json(
