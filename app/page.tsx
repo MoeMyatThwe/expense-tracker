@@ -196,6 +196,17 @@ export default function HomePage() {
       fetchCategories();
       fetchAllExpenses();
       fetchStats();
+      
+      // Auto-refresh Gmail imports after a short delay (1 sec)
+      // This gives the page time to show cached data first
+      const timer = setTimeout(() => {
+        refreshGmailData().catch(() => {
+          // Silent fail if Gmail not connected or error occurs
+          // User will still see cached expenses
+        });
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
   }, [authLoading, user]);
 
