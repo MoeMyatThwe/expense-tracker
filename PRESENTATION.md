@@ -96,27 +96,27 @@ Use this if you want a simple explanation in presentation order.
 
 ### Gmail refresh tokens & why an account may already look "connected"
 
-- **How refresh works:** After OAuth completes the server receives tokens from Google and `saveGmailConnection()` stores the user's *refresh token* (encrypted) in the `GmailConnection` row for that application user. When the server needs to call Gmail it uses `getAuthorizedGmailClient(userId)` which loads the encrypted refresh token, decrypts it, and calls `auth.setCredentials({ refresh_token })`. The Google client library will then exchange the refresh token for an access token automatically when making API calls.
+- **How refresh works:** After OAuth completes the server receives tokens from Google and `saveGmailConnection()` stores the user's _refresh token_ (encrypted) in the `GmailConnection` row for that application user. When the server needs to call Gmail it uses `getAuthorizedGmailClient(userId)` which loads the encrypted refresh token, decrypts it, and calls `auth.setCredentials({ refresh_token })`. The Google client library will then exchange the refresh token for an access token automatically when making API calls.
 
 - **Where the token is stored:** The code writes an `encryptedRefreshToken` into the `GmailConnection` table (see `prisma.schema` model `GmailConnection`). The server never persists the plaintext token; it stores the encrypted value using the app's encryption key.
 
 - **No hard-coded email in code:** There is no hard-coded Gmail account in the source. The app only uses the OAuth client ID/secret from env (the app-level credentials) and per-user encrypted refresh tokens saved in the database. If you see a specific Gmail account (for example `kiwikate003@gmail.com`) appearing as "connected" it means a `GmailConnection` row already exists for that application user.
 
 - **Why a connection might appear before you click Connect:**
-	- A previous test or seeded data created a `GmailConnection` for that user in the database.
-	- You (or someone) previously completed the OAuth flow while signed into the same Supabase user, so the connection remains.
-	- The app is running with a development/test user account (shared credentials) so the UI shows the connected email.
-	- A background job or manual import created the `GmailConnection` row.
+  - A previous test or seeded data created a `GmailConnection` for that user in the database.
+  - You (or someone) previously completed the OAuth flow while signed into the same Supabase user, so the connection remains.
+  - The app is running with a development/test user account (shared credentials) so the UI shows the connected email.
+  - A background job or manual import created the `GmailConnection` row.
 
 - **How to inspect and fix it:**
-	1. Check the `GmailConnection` rows in the database (Supabase dashboard / Prisma Studio) and look at the `userId` and `googleEmail` columns to see which app user is connected.
-	2. Call the status endpoint in the UI or `GET /api/gmail/oauth/status` (authenticated) to see the connection object returned by the server.
-	3. If it is a leftover test row, delete the row (via Supabase UI or `prisma`/SQL) to remove the connection.
-	4. Re-run the OAuth flow from the profile page to connect the desired Gmail account.
+  1.  Check the `GmailConnection` rows in the database (Supabase dashboard / Prisma Studio) and look at the `userId` and `googleEmail` columns to see which app user is connected.
+  2.  Call the status endpoint in the UI or `GET /api/gmail/oauth/status` (authenticated) to see the connection object returned by the server.
+  3.  If it is a leftover test row, delete the row (via Supabase UI or `prisma`/SQL) to remove the connection.
+  4.  Re-run the OAuth flow from the profile page to connect the desired Gmail account.
 
 - **Debug tips:**
-	- Use the debug endpoint `/api/debug/gmail` (added earlier) to verify the server-side client ID and the redirect URI the app uses.
-	- Check server logs for OAuth callback activity (the callback routes log errors and success redirects). Look for `saveGmailConnection` calls and the `googleEmail` value returned by `gmail.users.getProfile`.
+  - Use the debug endpoint `/api/debug/gmail` (added earlier) to verify the server-side client ID and the redirect URI the app uses.
+  - Check server logs for OAuth callback activity (the callback routes log errors and success redirects). Look for `saveGmailConnection` calls and the `googleEmail` value returned by `gmail.users.getProfile`.
 
 This summary explains why the app can show a connected Gmail even before clicking the Connect button, and how refresh tokens let the server access Gmail on behalf of the user without re-authorizing each time.
 

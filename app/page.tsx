@@ -196,7 +196,7 @@ export default function HomePage() {
       fetchCategories();
       fetchAllExpenses();
       fetchStats();
-      
+
       // Auto-refresh Gmail imports after a short delay (1 sec)
       // This gives the page time to show cached data first
       const timer = setTimeout(() => {
@@ -205,7 +205,7 @@ export default function HomePage() {
           // User will still see cached expenses
         });
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [authLoading, user]);
@@ -616,7 +616,7 @@ export default function HomePage() {
                           className="cinnamoroll-button bg-[#B2D7FF] hover:bg-[#9AC4E7] text-white"
                         >
                           <Plus className="mr-2 h-4 w-4" />
-                        {t("addFirstRecord")}
+                          {t("addFirstRecord")}
                         </Button>
                       }
                     />

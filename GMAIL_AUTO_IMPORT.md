@@ -5,11 +5,13 @@
 The expense tracker now supports **automatic background imports** of PayNow Gmail expenses. You have two options:
 
 ### Option 1: Auto-Import on Page Load (Already Enabled ✅)
+
 - Automatically fetches new PayNow emails when users visit the home page
 - Best for: Development and user-friendly experience
 - No setup needed — it just works!
 
 ### Option 2: Scheduled Background Imports (Optional)
+
 - Periodically fetches PayNow emails for all connected users, even if they're not using the app
 - Best for: Production environments where you want fresh data 24/7
 - Requires setting up an external cron service
@@ -27,6 +29,7 @@ GMAIL_AUTO_IMPORT_SECRET="your_super_secret_random_key_here"
 ```
 
 **For production:** Generate a random secure string:
+
 ```bash
 # On Linux/Mac:
 openssl rand -base64 32
@@ -40,6 +43,7 @@ openssl rand -base64 32
 Pick one of these **free** cron services:
 
 #### **Option A: cron-job.org** (Recommended - 5 min intervals)
+
 1. Go to https://cron-job.org/en/
 2. Click **Sign Up** (free)
 3. Create a new cronjob:
@@ -50,6 +54,7 @@ Pick one of these **free** cron services:
 4. Save and **Enable** the job
 
 #### **Option B: EasyCron** (30 second min intervals)
+
 1. Go to https://www.easycron.com/
 2. Click **Sign Up** (free)
 3. Create a cron job:
@@ -58,7 +63,9 @@ Pick one of these **free** cron services:
 4. Save and enable
 
 #### **Option C: AWS EventBridge** (Production)
+
 For enterprise customers, AWS EventBridge provides more control:
+
 1. Create rule with schedule: `rate(1 hour)`
 2. Target: HTTP POST to your endpoint with secret in header
 3. Refer to AWS documentation for details
@@ -76,6 +83,7 @@ curl "https://your-domain.com/api/gmail-expenses/auto-import?secret=YOUR_SECRET_
 ```
 
 **Expected response:**
+
 ```json
 {
   "success": true,
@@ -123,31 +131,35 @@ Check server logs to verify imports are working:
 
 ## Recommended Schedules
 
-| Frequency | Use Case | Cron |
-|-----------|----------|------|
-| **Every 1 hour** | Production (good balance) | `0 * * * *` |
-| **Every 6 hours** | Moderate usage | `0 */6 * * *` |
-| **Every 12 hours** | Light usage | `0 */12 * * *` |
-| **Every 4 hours** | Heavy usage | `0 */4 * * *` |
+| Frequency          | Use Case                  | Cron           |
+| ------------------ | ------------------------- | -------------- |
+| **Every 1 hour**   | Production (good balance) | `0 * * * *`    |
+| **Every 6 hours**  | Moderate usage            | `0 */6 * * *`  |
+| **Every 12 hours** | Light usage               | `0 */12 * * *` |
+| **Every 4 hours**  | Heavy usage               | `0 */4 * * *`  |
 
 ---
 
 ## Troubleshooting
 
 ### "Unauthorized" Error
+
 - ✅ Check secret key is correct
 - ✅ Verify `GMAIL_AUTO_IMPORT_SECRET` is set on server
 - ✅ Make sure secret matches between `.env` and cron service URL
 
 ### "No users with Gmail connected"
+
 - ✅ At least one user must have connected Gmail (via profile page)
 - ✅ Check database: `SELECT * FROM "GmailConnection"`
 
 ### "Gmail is not connected for this account"
+
 - ✅ User's GmailConnection row exists but refresh token may be expired
 - ✅ User should reconnect via profile page
 
 ### Cron job not triggering
+
 - ✅ Check cron service dashboard for "Last Execution" status
 - ✅ Look at server logs for API requests
 - ✅ Test manually with curl command above
@@ -157,6 +169,7 @@ Check server logs to verify imports are working:
 ## For Development
 
 During development, the endpoint is available at:
+
 ```
 http://localhost:3000/api/gmail-expenses/auto-import?secret=dev_secret_change_in_production
 ```
@@ -179,6 +192,7 @@ You can test it manually instead of setting up a cron job.
 **Endpoint:** `GET /api/gmail-expenses/auto-import?secret=<SECRET_KEY>`
 
 **Response (Success):**
+
 ```json
 {
   "success": true,
@@ -193,6 +207,7 @@ You can test it manually instead of setting up a cron job.
 ```
 
 **Response (Error):**
+
 ```json
 {
   "error": "Unauthorized" | "Auto-import not configured on server" | "Unknown error"
@@ -200,6 +215,7 @@ You can test it manually instead of setting up a cron job.
 ```
 
 **Status Codes:**
+
 - `200 OK` — Import completed (check stats for details)
 - `401 Unauthorized` — Invalid secret
 - `500 Internal Server Error` — Server configuration issue
@@ -209,6 +225,7 @@ You can test it manually instead of setting up a cron job.
 ## Questions?
 
 If imports aren't working:
+
 1. Test the endpoint manually with curl
 2. Check server logs
 3. Verify at least one user has Gmail connected

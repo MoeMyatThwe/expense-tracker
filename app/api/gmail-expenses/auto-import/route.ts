@@ -5,15 +5,15 @@ import { google } from "googleapis";
 
 /**
  * Auto-import endpoint for PayNow Gmail expenses
- * 
+ *
  * This endpoint is designed to be called by external cron services (e.g., cron-job.org, EasyCron)
  * to periodically fetch new PayNow emails for ALL users who have Gmail connected.
- * 
+ *
  * Usage:
  * 1. Add a cron job to call: GET /api/gmail-expenses/auto-import?secret=YOUR_SECRET_KEY
  * 2. Replace YOUR_SECRET_KEY with the value of GMAIL_AUTO_IMPORT_SECRET in .env.local
  * 3. Set cron frequency (e.g., every 1-2 hours)
- * 
+ *
  * Free cron services: cron-job.org, easycron.com, console.cron-job.org
  */
 
@@ -226,13 +226,12 @@ export async function GET(request: NextRequest) {
 
     if (secret !== expectedSecret) {
       console.warn("[Gmail Auto-Import] Invalid secret provided");
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[Gmail Auto-Import] Starting scheduled import for all users...");
+    console.log(
+      "[Gmail Auto-Import] Starting scheduled import for all users...",
+    );
 
     // Get all users with Gmail connections
     const connections = await prisma.gmailConnection.findMany({
