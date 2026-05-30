@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const LANGUAGE_KEY = "expense-tracker-language";
 
@@ -73,7 +67,8 @@ const translations = {
     cancel: "Cancel",
     saving: "Saving...",
     noCategoriesYet: "No categories yet",
-    noCategoriesDesc: "Create your first category by choosing an icon and name.",
+    noCategoriesDesc:
+      "Create your first category by choosing an icon and name.",
     loadingCategories: "Loading categories...",
     settingsSubtitle: "Personalize the app and manage your account.",
     appearance: "Appearance",
@@ -96,7 +91,8 @@ const translations = {
     updating: "Updating...",
     logout: "Logout",
     membership: "Membership",
-    membershipDesc: "Subscribe to unlock premium receipt scanning and tracking features.",
+    membershipDesc:
+      "Subscribe to unlock premium receipt scanning and tracking features.",
     membershipActive: "Your membership is {status}.",
     subscribe: "Subscribe",
     renewalPreference: "Renewal preference",
@@ -116,11 +112,14 @@ const translations = {
     membershipRenewsOn: "Renews on {date}",
     membershipEndsOn: "Ends on {date}",
     paymentSuccessTitle: "Payment completed",
-    paymentSuccessDesc: "You are back in the app. Your membership status and payment history are updated below.",
+    paymentSuccessDesc:
+      "You are back in the app. Your membership status and payment history are updated below.",
     paymentCancelledTitle: "Payment cancelled",
-    paymentCancelledDesc: "No payment was made. You can choose a renewal option and try again anytime.",
+    paymentCancelledDesc:
+      "No payment was made. You can choose a renewal option and try again anytime.",
     paymentHistory: "Payment history",
-    paymentHistoryHidden: "Details are hidden here. Open the history to review payments.",
+    paymentHistoryHidden:
+      "Details are hidden here. Open the history to review payments.",
     paymentHistoryDesc: "Review your recent membership payments and invoices.",
     noPaymentHistory: "No payment history yet.",
     view: "View",
@@ -128,10 +127,10 @@ const translations = {
     membershipActivated: "Membership activated",
     paymentCancelled: "Payment cancelled",
     month: "month",
-    gmailConnection: "Gmail Connection",
+    gmailConnection: "PayNow Gmail Connection",
     gmailConnectionDesc: "Connect Gmail to import PayNow emails automatically.",
-    connectGmail: "Connect Gmail",
-    disconnectGmail: "Disconnect Gmail",
+    connectGmail: "Connect PayNow Gmail",
+    disconnectGmail: "Disconnect PayNow Gmail",
     gmailConnected: "Connected to {email}",
     gmailNotConnected: "Gmail is not connected.",
     connecting: "Connecting...",
@@ -158,9 +157,11 @@ const translations = {
     saveChanges: "Save Changes",
     scanReceipt: "Scan Receipt",
     scanning: "Scanning...",
-    scanReceiptDesc: "Upload a shopping receipt, review the detected items, then import the ones you want.",
+    scanReceiptDesc:
+      "Upload a shopping receipt, review the detected items, then import the ones you want.",
     uploadReceipt: "Upload or take a receipt photo",
-    uploadReceiptHint: "Use a clear photo with the total and item names visible.",
+    uploadReceiptHint:
+      "Use a clear photo with the total and item names visible.",
     uploadedReceiptPreview: "Uploaded receipt preview",
     receiptScanned: "Receipt scanned",
     receiptImported: "Receipt items imported",
@@ -181,7 +182,8 @@ const translations = {
     analytics: "ခွဲခြမ်းစိတ်ဖြာမှု",
     settings: "ဆက်တင်",
     ledger: "မှတ်တမ်း",
-    ledgerSubtitle: "အသုံးစရိတ်၊ ဝင်ငွေ၊ ပြန်အမ်းငွေ နှင့် အကြွေးများကို မှတ်သားပါ",
+    ledgerSubtitle:
+      "အသုံးစရိတ်၊ ဝင်ငွေ၊ ပြန်အမ်းငွေ နှင့် အကြွေးများကို မှတ်သားပါ",
     refreshGmail: "Gmail ပြန်စစ်ရန်",
     refreshing: "ပြန်စစ်နေသည်...",
     addRecord: "မှတ်တမ်းထည့်ရန်",
@@ -202,7 +204,8 @@ const translations = {
     addFirstRecord: "ပထမဆုံးမှတ်တမ်းထည့်ရန်",
     loadingLedger: "မှတ်တမ်းများ ဖွင့်နေသည်...",
     loadingRecords: "မှတ်တမ်းများ တင်နေသည်...",
-    analyticsSubtitle: "လစဉ်စုစုပေါင်းနှင့် အမျိုးအစားလိုက်အသုံးစရိတ်ကို ကြည့်ပါ။",
+    analyticsSubtitle:
+      "လစဉ်စုစုပေါင်းနှင့် အမျိုးအစားလိုက်အသုံးစရိတ်ကို ကြည့်ပါ။",
     totalIn: "{date} စုစုပေါင်း",
     expenseRecords: "အသုံးစရိတ်မှတ်တမ်း",
     categories: "အမျိုးအစားများ",
@@ -212,15 +215,18 @@ const translations = {
     noCategorySpendingTitle: "အမျိုးအစားအသုံးစရိတ် မရှိသေးပါ",
     noCategorySpendingDesc: "ဒီလအတွက် အမျိုးအစားအသုံးစရိတ် မရှိသေးပါ။",
     loadingAnalytics: "ခွဲခြမ်းစိတ်ဖြာမှု တင်နေသည်...",
-    goodSummary: "ကောင်းလိုက်တာ!! {date} မှာ ပြီးခဲ့သည့်လထက် ပိုနည်းသုံးထားပါတယ်။",
+    goodSummary:
+      "ကောင်းလိုက်တာ!! {date} မှာ ပြီးခဲ့သည့်လထက် ပိုနည်းသုံးထားပါတယ်။",
     noSpendingSummary: "{date} အတွက် အသုံးစရိတ် မမှတ်ထားသေးပါ။",
     noPreviousSummary:
       "အိုး... {date} မှာ ${amount} သုံးထားပြီး ပြီးခဲ့သည့်လမှာ အသုံးစရိတ်မရှိပါ။",
     badSummaryRatio:
       "အိုး... {date} မှာ ပြီးခဲ့သည့်လထက် {ratio} ဆ သုံးထားပါတယ်။",
-    badSummaryMore: "အိုး... {date} မှာ ပြီးခဲ့သည့်လထက် ${amount} ပိုသုံးထားပါတယ်။",
+    badSummaryMore:
+      "အိုး... {date} မှာ ပြီးခဲ့သည့်လထက် ${amount} ပိုသုံးထားပါတယ်။",
     categoriesTitle: "အမျိုးအစားများ",
-    categoriesSubtitle: "ကိုယ်ပိုင်အမျိုးအစားနာမည်နှင့် အိုင်ကွန်ကို ရွေးချယ်ဖန်တီးပါ။",
+    categoriesSubtitle:
+      "ကိုယ်ပိုင်အမျိုးအစားနာမည်နှင့် အိုင်ကွန်ကို ရွေးချယ်ဖန်တီးပါ။",
     categoryName: "အမျိုးအစားနာမည်",
     icon: "အိုင်ကွန်",
     add: "ထည့်ရန်",
@@ -230,7 +236,8 @@ const translations = {
     cancel: "မလုပ်တော့ပါ",
     saving: "သိမ်းနေသည်...",
     noCategoriesYet: "အမျိုးအစား မရှိသေးပါ",
-    noCategoriesDesc: "အိုင်ကွန်နှင့် နာမည်ရွေးပြီး ပထမဆုံးအမျိုးအစားကို ဖန်တီးပါ။",
+    noCategoriesDesc:
+      "အိုင်ကွန်နှင့် နာမည်ရွေးပြီး ပထမဆုံးအမျိုးအစားကို ဖန်တီးပါ။",
     loadingCategories: "အမျိုးအစားများ တင်နေသည်...",
     settingsSubtitle: "အက်ပ်ကို ကိုယ်ပိုင်ပြင်ဆင်ပြီး အကောင့်ကို စီမံပါ။",
     appearance: "အသွင်အပြင်",
@@ -253,17 +260,19 @@ const translations = {
     updating: "ပြောင်းနေသည်...",
     logout: "ထွက်ရန်",
     membership: "အသင်းဝင်မှု",
-    membershipDesc: "အဆင့်မြင့် ဘောင်ချာစကင်နှင့် မှတ်တမ်းလုပ်ဆောင်ချက်များအတွက် စာရင်းသွင်းပါ။",
+    membershipDesc:
+      "အဆင့်မြင့် ဘောင်ချာစကင်နှင့် မှတ်တမ်းလုပ်ဆောင်ချက်များအတွက် စာရင်းသွင်းပါ။",
     membershipActive: "သင့်အသင်းဝင်မှုသည် {status} ဖြစ်သည်။",
     subscribe: "စာရင်းသွင်းရန်",
     manageBilling: "ငွေပေးချေမှု စီမံရန်",
     membershipActivated: "အသင်းဝင်မှု ဖွင့်ပြီးပါပြီ",
     paymentCancelled: "ငွေပေးချေမှု ပယ်ဖျက်ခဲ့သည်",
     month: "လ",
-    gmailConnection: "Gmail ချိတ်ဆက်မှု",
-    gmailConnectionDesc: "PayNow အီးမေးလ်များကို အလိုအလျောက်ထည့်ရန် Gmail ကို ချိတ်ဆက်ပါ။",
-    connectGmail: "Gmail ချိတ်ဆက်ရန်",
-    disconnectGmail: "Gmail ဖြုတ်ရန်",
+    gmailConnection: "PayNow Gmail ချိတ်ဆက်မှု",
+    gmailConnectionDesc:
+      "PayNow အီးမေးလ်များကို အလိုအလျောက်ထည့်ရန် Gmail ကို ချိတ်ဆက်ပါ။",
+    connectGmail: "PayNow Gmail ချိတ်ဆက်ရန်",
+    disconnectGmail: "PayNow Gmail ဖြုတ်ရန်",
     gmailConnected: "{email} နှင့် ချိတ်ဆက်ထားသည်",
     gmailNotConnected: "Gmail မချိတ်ဆက်ရသေးပါ။",
     connecting: "ချိတ်ဆက်နေသည်...",
@@ -290,9 +299,11 @@ const translations = {
     saveChanges: "ပြောင်းလဲမှု သိမ်းရန်",
     scanReceipt: "ဘောင်ချာစကင်",
     scanning: "စကင်ဖတ်နေသည်...",
-    scanReceiptDesc: "စျေးဝယ်ဘောင်ချာကို တင်ပြီး တွေ့ရှိသောပစ္စည်းများကို စစ်ဆေးကာ လိုချင်သောအရာများကို ထည့်ပါ။",
+    scanReceiptDesc:
+      "စျေးဝယ်ဘောင်ချာကို တင်ပြီး တွေ့ရှိသောပစ္စည်းများကို စစ်ဆေးကာ လိုချင်သောအရာများကို ထည့်ပါ။",
     uploadReceipt: "ဘောင်ချာပုံ တင်ရန် သို့မဟုတ် ရိုက်ရန်",
-    uploadReceiptHint: "စုစုပေါင်းငွေ နှင့် ပစ္စည်းနာမည်များ မြင်ရသော ရှင်းလင်းသောပုံကို သုံးပါ။",
+    uploadReceiptHint:
+      "စုစုပေါင်းငွေ နှင့် ပစ္စည်းနာမည်များ မြင်ရသော ရှင်းလင်းသောပုံကို သုံးပါ။",
     uploadedReceiptPreview: "တင်ထားသောဘောင်ချာပုံ",
     receiptScanned: "ဘောင်ချာစကင်ပြီးပါပြီ",
     receiptImported: "ဘောင်ချာပစ္စည်းများ ထည့်ပြီးပါပြီ",
