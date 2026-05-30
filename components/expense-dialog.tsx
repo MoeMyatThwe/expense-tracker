@@ -1,13 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
-// Check for browser support
-const hasSpeechRecognition =
-  typeof window !== "undefined" &&
-  ((window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition);
 import { motion } from "framer-motion";
 import {
   Dialog,
@@ -34,6 +29,29 @@ import {
   type CategoryOption,
 } from "@/lib/category-options";
 import { useLanguage } from "@/components/language-provider";
+
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+type SpeechRecognitionInstance = {
+  continuous: boolean;
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
 
 interface Expense {
   id: string;
@@ -138,7 +156,6 @@ export function ExpenseDialog({
   open,
   onOpenChange,
   onSave,
-  expense,
   mode,
   categories = DEFAULT_CATEGORIES,
 }: ExpenseDialogProps) {
@@ -158,23 +175,36 @@ export function ExpenseDialog({
 
   const [listening, setListening] = useState(false);
   const [source, setSource] = useState<"manual" | "voice" | "gmail">("manual");
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const needsCategory = formData.recordType === "expense";
+  const hasSpeechRecognition =
+    typeof window !== "undefined" &&
+    Boolean(
+      (window as SpeechRecognitionWindow).SpeechRecognition ||
+      (window as SpeechRecognitionWindow).webkitSpeechRecognition,
+    );
 
   // Start/stop speech recognition
   const handleSpeech = () => {
-    if (!hasSpeechRecognition)
-      return alert("Speech recognition not supported in this browser.");
+    if (!hasSpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser.");
+      return;
+    }
     if (!recognitionRef.current) {
+      const browserWindow = window as SpeechRecognitionWindow;
       const SpeechRecognition =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
+        browserWindow.SpeechRecognition ||
+        browserWindow.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        toast.error("Speech recognition is not available in this browser.");
+        return;
+      }
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.lang = "en-US";
       recognitionRef.current.interimResults = false;
       recognitionRef.current.maxAlternatives = 1;
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         // Mark this as voice input
         setSource("voice");
@@ -210,45 +240,23 @@ export function ExpenseDialog({
     }
     if (!listening) {
       setListening(true);
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch {
+        setListening(false);
+        toast.error(
+          "Could not start microphone. Please allow microphone access.",
+        );
+      }
     } else {
       setListening(false);
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        setListening(false);
+      }
     }
   };
-
-  useEffect(() => {
-    if (expense && mode === "edit") {
-      setFormData({
-        title: expense.title,
-        amount: expense.amount.toString(),
-        category: expense.category,
-        date: new Date(expense.date).toISOString().split("T")[0],
-        description: expense.description || "",
-        recordType: expense.recordType || "expense",
-        isRecurring: Boolean(expense.isRecurring),
-        recurringInterval: expense.recurringInterval || "monthly",
-        status: expense.status || "completed",
-        counterparty: expense.counterparty || "",
-      });
-      setSource(expense.source || "manual");
-    } else if (mode === "create") {
-      setFormData({
-        title: "",
-        amount: "",
-        category: "",
-        date: new Date().toISOString().split("T")[0],
-        description: "",
-        recordType: "expense",
-        isRecurring: false,
-        recurringInterval: "monthly",
-        status: "completed",
-        counterparty: "",
-      });
-      // Reset source when opening create dialog
-      setSource("manual");
-    }
-  }, [expense, mode, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,12 +315,13 @@ export function ExpenseDialog({
               )}
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              {mode === "create"
-                ? t("addRecordDesc")
-                : t("updateRecordDesc")}
+              {mode === "create" ? t("addRecordDesc") : t("updateRecordDesc")}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <form
+            onSubmit={handleSubmit}
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <div className="min-h-0 flex-1 overflow-y-auto px-6">
               <div className="mb-2 flex justify-end">
                 {hasSpeechRecognition && (
@@ -366,242 +375,243 @@ export function ExpenseDialog({
                 )}
               </div>
               <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label className="text-gray-700 font-medium">
-                  {t("recordType")}
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {recordTypes.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          recordType: type.value,
-                          category:
-                            type.value === "expense" ? formData.category : "",
-                          status:
-                            type.value === "liability" ||
-                            type.value === "reimbursement"
-                              ? "open"
-                              : "completed",
-                        })
-                      }
-                      className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
-                        formData.recordType === type.value
-                          ? "border-[#9AC4E7] bg-[#E1EDFD] text-[#859BB2]"
-                          : "border-[#D4E5F7] bg-white text-gray-600 hover:bg-[#E1EDFD]"
-                      }`}
-                    >
-                      {type.value === "expense"
-                        ? t("expense")
-                        : type.value === "income"
-                          ? t("income")
-                          : type.value === "liability"
-                            ? t("liability")
-                            : t("reimbursement")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="title" className="text-gray-700 font-medium">
-                  {t("title")}
-                </Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  placeholder="e.g., Grocery shopping"
-                  className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="amount" className="text-gray-700 font-medium">
-                  {t("amount")}
-                </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
-                  }
-                  placeholder="0.00"
-                  className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
-                  required
-                />
-              </div>
-              {needsCategory && (
-                <div className="grid gap-2">
-                  <Label
-                    htmlFor="category"
-                    className="text-gray-700 font-medium"
-                  >
-                    {t("category")}{" "}
-                    {formData.category && (
-                      <span className="text-sm text-[#859BB2]">
-                        {t("selected")}: {formatCategoryName(formData.category)}
-                      </span>
-                    )}
-                  </Label>
-                  <Select
-                    value={formData.category || ""}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, category: value })
-                    }
-                  >
-                    <SelectTrigger className="rounded-xl border-[#D4E5F7]">
-                      <SelectValue placeholder={t("selectCategory")} />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {categories.map((category) => (
-                        <SelectItem
-                          key={category.name}
-                          value={category.name}
-                          className="rounded-lg"
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <CategoryIcon
-                              name={category.icon}
-                              className="h-4 w-4 text-[#859BB2]"
-                            />
-                            {formatCategoryName(category.name)}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {(formData.recordType === "liability" ||
-                formData.recordType === "reimbursement") && (
-                <div className="grid gap-2">
-                  <Label
-                    htmlFor="counterparty"
-                    className="text-gray-700 font-medium"
-                  >
-                    {t("personOrg")}
-                  </Label>
-                  <Input
-                    id="counterparty"
-                    value={formData.counterparty}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        counterparty: e.target.value,
-                      })
-                    }
-                    placeholder={t("whoInvolved")}
-                    className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
-                  />
-                </div>
-              )}
-
-              {(formData.recordType === "liability" ||
-                formData.recordType === "reimbursement") && (
                 <div className="grid gap-2">
                   <Label className="text-gray-700 font-medium">
-                    {t("status")}
+                    {t("recordType")}
                   </Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger className="rounded-xl border-[#D4E5F7]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="open">{t("open")}</SelectItem>
-                      <SelectItem value="settled">{t("settled")}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {recordTypes.map((type) => (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            recordType: type.value,
+                            category:
+                              type.value === "expense" ? formData.category : "",
+                            status:
+                              type.value === "liability" ||
+                              type.value === "reimbursement"
+                                ? "open"
+                                : "completed",
+                          })
+                        }
+                        className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                          formData.recordType === type.value
+                            ? "border-[#9AC4E7] bg-[#E1EDFD] text-[#859BB2]"
+                            : "border-[#D4E5F7] bg-white text-gray-600 hover:bg-[#E1EDFD]"
+                        }`}
+                      >
+                        {type.value === "expense"
+                          ? t("expense")
+                          : type.value === "income"
+                            ? t("income")
+                            : type.value === "liability"
+                              ? t("liability")
+                              : t("reimbursement")}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
 
-              <div className="rounded-xl border border-[#D4E5F7] bg-white/70 p-3">
-                <label className="flex items-center justify-between gap-3 text-sm font-medium text-gray-700">
-                  <span>{t("recurring")}</span>
-                  <input
-                    type="checkbox"
-                    checked={formData.isRecurring}
+                <div className="grid gap-2">
+                  <Label htmlFor="title" className="text-gray-700 font-medium">
+                    {t("title")}
+                  </Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        isRecurring: e.target.checked,
-                      })
+                      setFormData({ ...formData, title: e.target.value })
                     }
-                    className="h-5 w-5 accent-[#859BB2]"
+                    placeholder="e.g., Grocery shopping"
+                    className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
+                    required
                   />
-                </label>
-                {formData.isRecurring && (
-                  <div className="mt-3">
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="amount" className="text-gray-700 font-medium">
+                    {t("amount")}
+                  </Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                    placeholder="0.00"
+                    className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
+                    required
+                  />
+                </div>
+                {needsCategory && (
+                  <div className="grid gap-2">
+                    <Label
+                      htmlFor="category"
+                      className="text-gray-700 font-medium"
+                    >
+                      {t("category")}{" "}
+                      {formData.category && (
+                        <span className="text-sm text-[#859BB2]">
+                          {t("selected")}:{" "}
+                          {formatCategoryName(formData.category)}
+                        </span>
+                      )}
+                    </Label>
                     <Select
-                      value={formData.recurringInterval}
+                      value={formData.category || ""}
                       onValueChange={(value) =>
-                        setFormData({
-                          ...formData,
-                          recurringInterval: value,
-                        })
+                        setFormData({ ...formData, category: value })
                       }
                     >
                       <SelectTrigger className="rounded-xl border-[#D4E5F7]">
-                        <SelectValue />
+                        <SelectValue placeholder={t("selectCategory")} />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        {recurringIntervals.map((interval) => (
+                        {categories.map((category) => (
                           <SelectItem
-                            key={interval.value}
-                            value={interval.value}
+                            key={category.name}
+                            value={category.name}
+                            className="rounded-lg"
                           >
-                            {interval.label}
+                            <span className="inline-flex items-center gap-2">
+                              <CategoryIcon
+                                name={category.icon}
+                                className="h-4 w-4 text-[#859BB2]"
+                              />
+                              {formatCategoryName(category.name)}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="date" className="text-gray-700 font-medium">
-                  {t("date")}
-                </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                  className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label
-                  htmlFor="description"
-                  className="text-gray-700 font-medium"
-                >
-                  {t("descriptionOptional")}
-                </Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder={t("notesRecord")}
-                  className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
-                />
-              </div>
+                {(formData.recordType === "liability" ||
+                  formData.recordType === "reimbursement") && (
+                  <div className="grid gap-2">
+                    <Label
+                      htmlFor="counterparty"
+                      className="text-gray-700 font-medium"
+                    >
+                      {t("personOrg")}
+                    </Label>
+                    <Input
+                      id="counterparty"
+                      value={formData.counterparty}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          counterparty: e.target.value,
+                        })
+                      }
+                      placeholder={t("whoInvolved")}
+                      className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
+                    />
+                  </div>
+                )}
+
+                {(formData.recordType === "liability" ||
+                  formData.recordType === "reimbursement") && (
+                  <div className="grid gap-2">
+                    <Label className="text-gray-700 font-medium">
+                      {t("status")}
+                    </Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, status: value })
+                      }
+                    >
+                      <SelectTrigger className="rounded-xl border-[#D4E5F7]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="open">{t("open")}</SelectItem>
+                        <SelectItem value="settled">{t("settled")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-[#D4E5F7] bg-white/70 p-3">
+                  <label className="flex items-center justify-between gap-3 text-sm font-medium text-gray-700">
+                    <span>{t("recurring")}</span>
+                    <input
+                      type="checkbox"
+                      checked={formData.isRecurring}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          isRecurring: e.target.checked,
+                        })
+                      }
+                      className="h-5 w-5 accent-[#859BB2]"
+                    />
+                  </label>
+                  {formData.isRecurring && (
+                    <div className="mt-3">
+                      <Select
+                        value={formData.recurringInterval}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            recurringInterval: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="rounded-xl border-[#D4E5F7]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {recurringIntervals.map((interval) => (
+                            <SelectItem
+                              key={interval.value}
+                              value={interval.value}
+                            >
+                              {interval.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="date" className="text-gray-700 font-medium">
+                    {t("date")}
+                  </Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
+                    className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label
+                    htmlFor="description"
+                    className="text-gray-700 font-medium"
+                  >
+                    {t("descriptionOptional")}
+                  </Label>
+                  <Input
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    placeholder={t("notesRecord")}
+                    className="rounded-xl border-[#D4E5F7] focus:border-[#B2D7FF] focus:ring-[#B2D7FF]"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="shrink-0 gap-2 border-t border-[#D4E5F7] bg-white/90 px-6 py-4 backdrop-blur">
