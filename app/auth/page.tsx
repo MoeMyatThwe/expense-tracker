@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/contexts/auth-context";
 import type { AuthError } from "@/app/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -28,11 +28,12 @@ function AuthPageContent() {
   const [resetSent, setResetSent] = useState(false);
   const { signIn, signInWithProvider, signUp, resetPassword } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const tabParam = new URLSearchParams(window.location.search).get("tab");
+    const tabParam = searchParams.get("tab");
     if (tabParam === "signup") setTab("signup");
-  }, []);
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
