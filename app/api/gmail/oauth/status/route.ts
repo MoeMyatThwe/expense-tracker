@@ -17,25 +17,33 @@ async function getCurrentUser(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const user = await getCurrentUser(request);
+  try {
+    const user = await getCurrentUser(request);
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const connection = await prisma.gmailConnection.findUnique({
+      where: { userId: user.id },
+      select: {
+        googleEmail: true,
+        connectedAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json({
+      connected: Boolean(connection),
+      connection,
+    });
+  } catch (error) {
+    console.error("[Gmail Status Error]:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch Gmail status", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
   }
-
-  const connection = await prisma.gmailConnection.findUnique({
-    where: { userId: user.id },
-    select: {
-      googleEmail: true,
-      connectedAt: true,
-      updatedAt: true,
-    },
-  });
-
-  return NextResponse.json({
-    connected: Boolean(connection),
-    connection,
-  });
 }
 
 export async function DELETE(request: Request) {

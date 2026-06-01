@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const state = request.nextUrl.searchParams.get("state");
 
     if (!code || !state) {
+      console.error("[Gmail Token] Missing code or state");
       return NextResponse.json(
         {
           error:
@@ -27,19 +28,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log("[Gmail Token] Verifying state...");
     const userId = verifyOAuthState(state);
+    console.log("[Gmail Token] State verified for user:", userId);
+
+    console.log("[Gmail Token] Exchanging code for tokens...");
     const auth = createOAuthClient();
     const { tokens } = await auth.getToken(code);
 
+    if (!tokens) {
+      console.error("[Gmail Token] No tokens received from Google");
+      return NextResponse.redirect(
+        `${getAppBaseUrl(request)}/profile?gmail=failed&error=no_tokens`,
+      );
+    }
+
+    console.log("[Gmail Token] Saving connection to database...");
     await saveGmailConnection({ userId, tokens });
 
+    console.log(`[Gmail Token] ✅ Successfully connected for user ${userId}`);
     return NextResponse.redirect(
       `${getAppBaseUrl(request)}/profile?gmail=connected`,
     );
   } catch (error) {
     console.error("[Gmail Token Callback] Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.redirect(
-      `${getAppBaseUrl(request)}/profile?gmail=failed`,
+      `${getAppBaseUrl(request)}/profile?gmail=failed&error=${encodeURIComponent(message)}`,
     );
   }
 }
