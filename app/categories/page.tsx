@@ -17,6 +17,8 @@ import { CategoryIcon } from "@/components/category-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmationModal } from "@/components/confirmation-modal";
+import { OperationModal } from "@/components/operation-modal";
 import { useLanguage } from "@/components/language-provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,10 +44,21 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState(CATEGORY_ICONS[0]);
-  const [editingCategory, setEditingCategory] =
-    useState<CategoryOption | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CategoryOption | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Modal states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [operationModal, setOperationModal] = useState<{
+    open: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  }>({ open: false, type: "success", title: "", message: "" });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -95,7 +108,16 @@ export default function CategoriesPage() {
 
     try {
       const token = await getToken();
-      if (!token) return;
+      if (!token) {
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Authentication Failed",
+          message: "You are not authenticated. Please sign in again.",
+        });
+        setSaving(false);
+        return;
+      }
 
       const response = await fetch(
         editingCategory?.id
@@ -116,15 +138,30 @@ export default function CategoriesPage() {
         throw new Error(data.error || "Failed to save category");
       }
 
+      const isUpdate = !!editingCategory?.id;
+      setOperationModal({
+        open: true,
+        type: "success",
+        title: isUpdate ? "Category Updated" : "Category Created",
+        message: isUpdate
+          ? `Category "${name}" has been successfully updated.`
+          : `Category "${name}" has been successfully created.`,
+      });
+
       setName("");
       setIcon(CATEGORY_ICONS[0]);
       setEditingCategory(null);
-      toast.success(editingCategory ? "Category updated" : "Category created");
       await fetchCategories();
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save category",
-      );
+      setOperationModal({
+        open: true,
+        type: "error",
+        title: "Failed to Save Category",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to save category. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -144,12 +181,26 @@ export default function CategoriesPage() {
 
   const deleteCategory = async (id?: string) => {
     if (!id) return;
+    setCategoryToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!categoryToDelete) return;
 
     try {
       const token = await getToken();
-      if (!token) return;
+      if (!token) {
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Authentication Failed",
+          message: "You are not authenticated. Please sign in again.",
+        });
+        return;
+      }
 
-      const response = await fetch(`/api/categories/${id}`, {
+      const response = await fetch(`/api/categories/${categoryToDelete}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -158,10 +209,24 @@ export default function CategoriesPage() {
         throw new Error("Failed to delete category");
       }
 
-      setCategories((current) => current.filter((category) => category.id !== id));
-      toast.success("Category deleted");
+      setCategories((current) =>
+        current.filter((category) => category.id !== categoryToDelete),
+      );
+      setOperationModal({
+        open: true,
+        type: "success",
+        title: "Category Deleted",
+        message: "Your category has been successfully deleted.",
+      });
+      setDeleteConfirmOpen(false);
+      setCategoryToDelete(null);
     } catch (error) {
-      toast.error("Failed to delete category");
+      setOperationModal({
+        open: true,
+        type: "error",
+        title: "Failed to Delete Category",
+        message: "Failed to delete category. Please try again.",
+      });
     }
   };
 
@@ -189,9 +254,7 @@ export default function CategoriesPage() {
             <h1 className="text-3xl font-bold text-[#859BB2]">
               {t("categoriesTitle")}
             </h1>
-            <p className="text-sm text-gray-600">
-              {t("categoriesSubtitle")}
-            </p>
+            <p className="text-sm text-gray-600">{t("categoriesSubtitle")}</p>
           </div>
         </motion.div>
 
@@ -317,6 +380,27 @@ export default function CategoriesPage() {
             ))}
           </div>
         )}
+
+        {/* Modals */}
+        <ConfirmationModal
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          title="Delete Category?"
+          description="Are you sure you want to delete this category? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          isDangerous={true}
+          onConfirm={handleConfirmDelete}
+        />
+        <OperationModal
+          open={operationModal.open}
+          onOpenChange={(open) =>
+            setOperationModal({ ...operationModal, open })
+          }
+          type={operationModal.type}
+          title={operationModal.title}
+          message={operationModal.message}
+        />
       </div>
     </div>
   );

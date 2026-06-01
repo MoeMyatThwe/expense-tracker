@@ -29,6 +29,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ConfirmationModal } from "@/components/confirmation-modal";
+import { OperationModal } from "@/components/operation-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CinnamorollLoader } from "@/components/loading-states";
 import {
@@ -36,10 +38,7 @@ import {
   type FontSizeChoice,
   getSavedFontSize,
 } from "@/components/font-size-provider";
-import {
-  LANGUAGE_OPTIONS,
-  useLanguage,
-} from "@/components/language-provider";
+import { LANGUAGE_OPTIONS, useLanguage } from "@/components/language-provider";
 import {
   Select,
   SelectContent,
@@ -69,9 +68,9 @@ export default function ProfilePage() {
     connection?: { googleEmail?: string | null } | null;
   }>({ connected: false });
   const [gmailLoading, setGmailLoading] = useState(false);
-  const [paymentNotice, setPaymentNotice] = useState<"success" | "cancelled" | null>(
-    null,
-  );
+  const [paymentNotice, setPaymentNotice] = useState<
+    "success" | "cancelled" | null
+  >(null);
   const [membership, setMembership] = useState<{
     active: boolean;
     plan: { id: string; name: string; amount: number; currency: string };
@@ -96,6 +95,15 @@ export default function ProfilePage() {
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [renewalMode, setRenewalMode] = useState<"auto" | "manual">("auto");
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
+
+  // Modal states
+  const [cancelSubConfirmOpen, setCancelSubConfirmOpen] = useState(false);
+  const [operationModal, setOperationModal] = useState<{
+    open: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  }>({ open: false, type: "success", title: "", message: "" });
 
   useEffect(() => {
     setFontSize(getSavedFontSize());
@@ -288,17 +296,19 @@ export default function ProfilePage() {
       window.location.href = data.url;
     } catch (error: unknown) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to open billing portal",
+        error instanceof Error
+          ? error.message
+          : "Failed to open billing portal",
       );
       setMembershipLoading(false);
     }
   };
 
   const cancelSubscription = async () => {
-    if (!confirm(t("cancelAutoRenewConfirm"))) {
-      return;
-    }
+    setCancelSubConfirmOpen(true);
+  };
 
+  const handleConfirmCancelSub = async () => {
     setMembershipLoading(true);
     try {
       const {
@@ -306,7 +316,13 @@ export default function ProfilePage() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        toast.error("Not authenticated");
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Authentication Failed",
+          message: "You are not authenticated. Please sign in again.",
+        });
+        setMembershipLoading(false);
         return;
       }
 
@@ -322,14 +338,25 @@ export default function ProfilePage() {
         throw new Error(data.error || "Failed to cancel subscription");
       }
 
-      toast.success(t("autoRenewCancelled"));
+      setOperationModal({
+        open: true,
+        type: "success",
+        title: "Subscription Cancelled",
+        message:
+          "Your subscription has been successfully cancelled. It will end at the end of your current billing period.",
+      });
+      setCancelSubConfirmOpen(false);
       await fetchMembershipStatus();
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to cancel subscription",
-      );
+      setOperationModal({
+        open: true,
+        type: "error",
+        title: "Failed to Cancel Subscription",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to cancel subscription. Please try again.",
+      });
     } finally {
       setMembershipLoading(false);
     }
@@ -454,13 +481,13 @@ export default function ProfilePage() {
     Boolean(membership?.membership?.stripeSubscriptionId) &&
     membership?.membership?.status !== "canceled";
   const canCancelAutoRenew =
-    hasAutoRenewSubscription &&
-    !membership?.membership?.cancelAtPeriodEnd;
-  const membershipAction = membership?.active || hasAutoRenewSubscription
-    ? isManualMembership
-      ? startMembershipCheckout
-      : openBillingPortal
-    : startMembershipCheckout;
+    hasAutoRenewSubscription && !membership?.membership?.cancelAtPeriodEnd;
+  const membershipAction =
+    membership?.active || hasAutoRenewSubscription
+      ? isManualMembership
+        ? startMembershipCheckout
+        : openBillingPortal
+      : startMembershipCheckout;
   const billingHistory = membership?.billingHistory || [];
   const formatBillingAmount = (amount: number, currency: string) =>
     `${currency.toUpperCase()} ${(amount / 100).toFixed(2)}`;
@@ -497,9 +524,7 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-bold text-[#859BB2]">
                 {t("settings")}
               </h1>
-              <p className="text-sm text-gray-600">
-                {t("settingsSubtitle")}
-              </p>
+              <p className="text-sm text-gray-600">{t("settingsSubtitle")}</p>
             </div>
           </div>
         </motion.div>
@@ -523,9 +548,7 @@ export default function ProfilePage() {
                   <p className="font-medium text-gray-800 dark:text-gray-100">
                     {t("theme")}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    {t("themeDesc")}
-                  </p>
+                  <p className="text-sm text-gray-500">{t("themeDesc")}</p>
                 </div>
                 <ThemeToggle />
               </div>
@@ -537,9 +560,7 @@ export default function ProfilePage() {
                     <p className="font-medium text-gray-800 dark:text-gray-100">
                       {t("textSize")}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      {t("textSizeDesc")}
-                    </p>
+                    <p className="text-sm text-gray-500">{t("textSizeDesc")}</p>
                   </div>
                 </div>
 
@@ -579,9 +600,7 @@ export default function ProfilePage() {
                     <p className="font-medium text-gray-800 dark:text-gray-100">
                       {t("language")}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      {t("languageDesc")}
-                    </p>
+                    <p className="text-sm text-gray-500">{t("languageDesc")}</p>
                   </div>
                 </div>
                 <Select value={language} onValueChange={setLanguage}>
@@ -627,40 +646,39 @@ export default function ProfilePage() {
               <div className="space-y-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
-                  <CreditCard className="h-5 w-5 shrink-0 text-[#859BB2]" />
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-800 dark:text-gray-100">
-                      {t("membership")}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {membership?.active
-                        ? t("membershipActive", {
-                            status:
-                              membership.membership?.status || "active",
-                          })
-                        : t("membershipDesc")}
-                    </p>
-                    {membership?.active && membershipEndLabel ? (
-                      <p className="mt-1 text-xs font-medium text-[#859BB2]">
-                        {membership.membership?.cancelAtPeriodEnd
-                          ? t("membershipEndsOn", {
-                              date: membershipEndLabel,
-                            })
-                          : isManualMembership
-                          ? t("membershipExpiresOn", {
-                              date: membershipEndLabel,
-                            })
-                          : t("membershipRenewsOn", {
-                              date: membershipEndLabel,
-                            })}
+                    <CreditCard className="h-5 w-5 shrink-0 text-[#859BB2]" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-800 dark:text-gray-100">
+                        {t("membership")}
                       </p>
-                    ) : null}
-                    <p className="mt-1 text-xs font-medium text-[#859BB2]">
-                      {membership?.plan
-                        ? `${membership.plan.currency.toUpperCase()} ${(membership.plan.amount / 100).toFixed(2)} / ${t("month")}`
-                        : `SGD 4.99 / ${t("month")}`}
-                    </p>
-                  </div>
+                      <p className="text-sm text-gray-500">
+                        {membership?.active
+                          ? t("membershipActive", {
+                              status: membership.membership?.status || "active",
+                            })
+                          : t("membershipDesc")}
+                      </p>
+                      {membership?.active && membershipEndLabel ? (
+                        <p className="mt-1 text-xs font-medium text-[#859BB2]">
+                          {membership.membership?.cancelAtPeriodEnd
+                            ? t("membershipEndsOn", {
+                                date: membershipEndLabel,
+                              })
+                            : isManualMembership
+                              ? t("membershipExpiresOn", {
+                                  date: membershipEndLabel,
+                                })
+                              : t("membershipRenewsOn", {
+                                  date: membershipEndLabel,
+                                })}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-xs font-medium text-[#859BB2]">
+                        {membership?.plan
+                          ? `${membership.plan.currency.toUpperCase()} ${(membership.plan.amount / 100).toFixed(2)} / ${t("month")}`
+                          : `SGD 4.99 / ${t("month")}`}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">
                     <Button
@@ -773,9 +791,7 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="hidden">
-                      {t("noPaymentHistory")}
-                    </p>
+                    <p className="hidden">{t("noPaymentHistory")}</p>
                   )}
                   <Button
                     type="button"
@@ -788,8 +804,8 @@ export default function ProfilePage() {
                   </Button>
                 </div>
                 {membership?.active &&
-                  membership.membership?.cancelAtPeriodEnd &&
-                  !isManualMembership ? (
+                membership.membership?.cancelAtPeriodEnd &&
+                !isManualMembership ? (
                   <p className="rounded-xl border border-[#D4E5F7] bg-[#E1EDFD]/60 px-4 py-3 text-sm text-[#64748b]">
                     {t("autoRenewCancelScheduled")}
                   </p>
@@ -941,6 +957,26 @@ export default function ProfilePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modals */}
+      <ConfirmationModal
+        open={cancelSubConfirmOpen}
+        onOpenChange={setCancelSubConfirmOpen}
+        title={t("cancelAutoRenewConfirm") || "Cancel Subscription?"}
+        description="Are you sure you want to cancel your subscription? You will lose premium features at the end of your current billing period."
+        confirmText="Cancel Subscription"
+        cancelText="Keep Subscription"
+        isDangerous={true}
+        isLoading={membershipLoading}
+        onConfirm={handleConfirmCancelSub}
+      />
+      <OperationModal
+        open={operationModal.open}
+        onOpenChange={(open) => setOperationModal({ ...operationModal, open })}
+        type={operationModal.type}
+        title={operationModal.title}
+        message={operationModal.message}
+      />
     </div>
   );
 }

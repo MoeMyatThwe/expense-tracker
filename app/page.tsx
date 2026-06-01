@@ -11,6 +11,8 @@ import { ExpenseCard } from "@/components/expense-card";
 import { ExpenseDialog } from "@/components/expense-dialog";
 import { ReceiptImportDialog } from "@/components/receipt-import-dialog";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmationModal } from "@/components/confirmation-modal";
+import { OperationModal } from "@/components/operation-modal";
 import { useAuth } from "@/app/contexts/auth-context";
 import { supabase } from "@/lib/supabase";
 import {
@@ -98,6 +100,16 @@ export default function HomePage() {
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+
+  // Modal states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
+  const [operationModal, setOperationModal] = useState<{
+    open: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  }>({ open: false, type: "success", title: "", message: "" });
 
   // Move fetchStats and fetchExpenses above useEffect
   const fetchStats = async () => {
@@ -269,7 +281,12 @@ export default function HomePage() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        toast.error("Not authenticated");
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Authentication Failed",
+          message: "You are not authenticated. Please sign in again.",
+        });
         return;
       }
 
@@ -283,17 +300,34 @@ export default function HomePage() {
       });
 
       if (response.ok) {
-        toast.success("Expense added successfully!");
+        setOperationModal({
+          open: true,
+          type: "success",
+          title: "Expense Created",
+          message: `Your expense "${expenseData.title}" has been successfully recorded.`,
+        });
         fetchExpenses();
         fetchStats();
         setDialogOpen(false);
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to add expense");
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Failed to Create Expense",
+          message:
+            error.error ||
+            "Failed to add expense. Please check your input and try again.",
+        });
       }
     } catch (error) {
       console.error("Error adding expense:", error);
-      toast.error("An error occurred");
+      setOperationModal({
+        open: true,
+        type: "error",
+        title: "Error",
+        message: "An unexpected error occurred. Please try again later.",
+      });
     }
   };
 
@@ -308,7 +342,12 @@ export default function HomePage() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        toast.error("Not authenticated");
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Authentication Failed",
+          message: "You are not authenticated. Please sign in again.",
+        });
         return;
       }
 
@@ -322,22 +361,45 @@ export default function HomePage() {
       });
 
       if (response.ok) {
-        toast.success("Expense updated successfully!");
+        setOperationModal({
+          open: true,
+          type: "success",
+          title: "Expense Updated",
+          message: `Your expense "${expenseData.title}" has been successfully updated.`,
+        });
         fetchExpenses();
         fetchStats();
         setEditingExpense(null);
         setDialogOpen(false);
       } else {
-        toast.error("Failed to update expense");
+        const data = await response.json();
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Failed to Update Expense",
+          message:
+            data.error ||
+            "Failed to update expense. Please check your input and try again.",
+        });
       }
     } catch (error) {
       console.error("Error updating expense:", error);
-      toast.error("An error occurred");
+      setOperationModal({
+        open: true,
+        type: "error",
+        title: "Error",
+        message: "An unexpected error occurred. Please try again later.",
+      });
     }
   };
 
   const handleDeleteExpense = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
+    setExpenseToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!expenseToDelete) return;
 
     try {
       const {
@@ -345,11 +407,16 @@ export default function HomePage() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        toast.error("Not authenticated");
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Authentication Failed",
+          message: "You are not authenticated. Please sign in again.",
+        });
         return;
       }
 
-      const response = await fetch(`/api/expenses/${id}`, {
+      const response = await fetch(`/api/expenses/${expenseToDelete}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -357,14 +424,34 @@ export default function HomePage() {
       });
 
       if (response.ok) {
-        toast.success("Expense deleted successfully!");
+        setOperationModal({
+          open: true,
+          type: "success",
+          title: "Expense Deleted",
+          message: "Your expense has been successfully deleted.",
+        });
+        setDeleteConfirmOpen(false);
+        setExpenseToDelete(null);
         fetchExpenses();
         fetchStats();
       } else {
-        toast.error("Failed to delete expense");
+        const data = await response.json();
+        setOperationModal({
+          open: true,
+          type: "error",
+          title: "Deletion Failed",
+          message:
+            data.error || "Failed to delete the expense. Please try again.",
+        });
       }
     } catch (error) {
-      toast.error("An error occurred");
+      console.error("Error deleting expense:", error);
+      setOperationModal({
+        open: true,
+        type: "error",
+        title: "Error",
+        message: "An unexpected error occurred. Please try again.",
+      });
     }
   };
 
@@ -673,6 +760,26 @@ export default function HomePage() {
             fetchExpenses();
             fetchStats();
           }}
+        />
+        {/* Modals */}
+        <ConfirmationModal
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          title="Delete Expense?"
+          description="Are you sure you want to delete this expense? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          isDangerous={true}
+          onConfirm={handleConfirmDelete}
+        />
+        <OperationModal
+          open={operationModal.open}
+          onOpenChange={(open) =>
+            setOperationModal({ ...operationModal, open })
+          }
+          type={operationModal.type}
+          title={operationModal.title}
+          message={operationModal.message}
         />
       </div>
     </div>
