@@ -40,8 +40,11 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[Gmail Status Error]:", error);
     return NextResponse.json(
-      { error: "Failed to fetch Gmail status", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      {
+        error: "Failed to fetch Gmail status",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }
