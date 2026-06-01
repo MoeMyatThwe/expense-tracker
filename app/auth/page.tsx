@@ -26,6 +26,7 @@ function AuthPageContent() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const { signIn, signInWithProvider, signUp, resetPassword } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,6 +73,7 @@ function AuthPageContent() {
         setError(result.error);
         return;
       }
+      setVerificationEmail(email);
       setSignUpSuccess(true);
       setEmail("");
       setPassword("");
@@ -439,8 +441,8 @@ function AuthPageContent() {
                   </h3>
                   <p className="text-xs text-gray-600 leading-relaxed">
                     We&apos;ve sent a verification link to{" "}
-                    <strong>{email}</strong>. Click the link in the email to
-                    confirm your account.
+                    <strong>{verificationEmail}</strong>. Click the link in the
+                    email to confirm your account.
                   </p>
                   <p className="text-xs text-gray-500 mt-2 italic">
                     After verifying, you can sign in with your credentials.
@@ -448,7 +450,10 @@ function AuthPageContent() {
                 </div>
               </div>
               <button
-                onClick={() => setSignUpSuccess(false)}
+                onClick={() => {
+                  setSignUpSuccess(false);
+                  setVerificationEmail("");
+                }}
                 className="mt-3 text-xs w-full py-2 rounded-lg transition-all hover:bg-white/50"
                 style={{ color: "#859BB2" }}
               >

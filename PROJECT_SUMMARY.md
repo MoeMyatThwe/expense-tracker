@@ -1,4 +1,4 @@
-# Expense Tracker - Project Complete! í¾‰
+# Expense Tracker - Project Complete! ï¿½ï¿½ï¿½
 
 ## What We Built
 
@@ -218,4 +218,11 @@ You now have a fully functional, modern expense tracker with:
 **Components Created**: 15+ reusable components
 **Features Completed**: 11/11 (100%)
 
-Ready to track your expenses! íº€
+Ready to track your expenses! ï¿½ï¿½ï¿½
+---
+
+## Portfolio Summary
+
+**Cinnamoroll Expense Tracker** is a full-stack web application designed to simplify personal financial management. The platform allows users to effortlessly track, categorize, and analyze their expenses through an intuitive interface with real-time analytics and interactive visualizations. Built with modern technologies including Next.js 15, React 19, TypeScript, Tailwind CSS, and Supabase PostgreSQL, the application demonstrates proficiency in creating responsive, production-ready applications. Features include interactive pie and bar charts for spending trends, dark mode support, CRUD operations with Prisma ORM, smooth Framer Motion animations, and a fully responsive design that works seamlessly across devices. The project showcases expertise in frontend development, backend API design, database management, and deployment optimization using industry-standard tools and best practices.
+
+**Tech Stack**: Next.js 15 | React 19 | TypeScript | Tailwind CSS | Shadcn/ui | Prisma 5 | Supabase PostgreSQL | Framer Motion | Recharts | Lucide Icons

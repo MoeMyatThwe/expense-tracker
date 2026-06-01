@@ -17,10 +17,16 @@ function getRequiredEnv(name: string) {
 }
 
 export function getGoogleRedirectUri() {
+  // Use NEXT_PUBLIC_APP_URL for production/deployment
+  // Falls back to GOOGLE_GMAIL_REDIRECT_URI if explicitly set
+  // Falls back to GOOGLE_REDIRECT_URI if explicitly set
+  // Local development fallback
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   return (
     process.env.GOOGLE_GMAIL_REDIRECT_URI ||
     process.env.GOOGLE_REDIRECT_URI ||
-    "http://localhost:3000/api/gmail/oauth/callback"
+    `${appUrl}/api/gmail/oauth/callback`
   );
 }
 
@@ -173,7 +179,9 @@ export async function saveGmailConnection({
       return existing;
     }
 
-    throw new Error("Google did not return a refresh token. Please reconnect Gmail.");
+    throw new Error(
+      "Google did not return a refresh token. Please reconnect Gmail.",
+    );
   }
 
   const auth = createOAuthClient();
@@ -186,13 +194,17 @@ export async function saveGmailConnection({
     update: {
       googleEmail: profile.data.emailAddress || null,
       encryptedRefreshToken: encryptToken(refreshToken),
-      scope: Array.isArray(tokens.scope) ? tokens.scope.join(" ") : tokens.scope,
+      scope: Array.isArray(tokens.scope)
+        ? tokens.scope.join(" ")
+        : tokens.scope,
     },
     create: {
       userId,
       googleEmail: profile.data.emailAddress || null,
       encryptedRefreshToken: encryptToken(refreshToken),
-      scope: Array.isArray(tokens.scope) ? tokens.scope.join(" ") : tokens.scope,
+      scope: Array.isArray(tokens.scope)
+        ? tokens.scope.join(" ")
+        : tokens.scope,
     },
   });
 }

@@ -695,7 +695,7 @@ export default function HomePage() {
             </div>
 
             <div className="ledger-browser-panel flex flex-col">
-              <div className="ledger-browser-controls flex w-full flex-row flex-nowrap items-center gap-3">
+              <div className="ledger-browser-controls flex w-full flex-wrap items-center gap-3">
                 <Select
                   value={String(currentYear)}
                   onValueChange={(year) =>
@@ -733,7 +733,7 @@ export default function HomePage() {
                 </Select>
 
                 {/* Family Filter Toggle */}
-                <div className="flex gap-2 ml-auto">
+                <div className="flex flex-wrap gap-2 ml-auto">
                   {(["personal", "family", "all"] as const).map((value) => {
                     const isNonPremium =
                       value === "family" &&

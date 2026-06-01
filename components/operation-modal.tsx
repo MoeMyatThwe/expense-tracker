@@ -37,23 +37,23 @@ export function OperationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-200 bg-white">
+      <DialogContent className="border-[#D4E5F7] bg-white">
         <DialogHeader>
           <div className="flex items-center gap-3">
             {isSuccess ? (
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-[#10b981]" />
             ) : (
-              <AlertCircle className="h-5 w-5 text-red-500" />
+              <AlertCircle className="h-5 w-5 text-[#B2D7FF]" />
             )}
             <DialogTitle
               className={`text-lg font-semibold ${
-                isSuccess ? "text-green-700" : "text-red-700"
+                isSuccess ? "text-[#10b981]" : "text-[#334155]"
               }`}
             >
               {title}
             </DialogTitle>
           </div>
-          <DialogDescription className="mt-2 text-slate-600">
+          <DialogDescription className="mt-2 text-[#859BB2]">
             {message}
           </DialogDescription>
         </DialogHeader>
@@ -62,8 +62,8 @@ export function OperationModal({
             onClick={handleClose}
             className={
               isSuccess
-                ? "bg-green-500 text-white hover:bg-green-600"
-                : "bg-red-500 text-white hover:bg-red-600"
+                ? "bg-[#10b981] text-white hover:bg-[#059669]"
+                : "bg-[#B2D7FF] text-[#334155] hover:bg-[#9AC4E7]"
             }
           >
             Got it

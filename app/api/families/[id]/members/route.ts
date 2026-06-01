@@ -149,10 +149,20 @@ export async function POST(
     });
   } catch (error) {
     console.error("Error adding member:", error);
-    return NextResponse.json(
-      { error: "Failed to add member" },
-      { status: 500 },
-    );
+
+    let errorMessage = "Failed to add member";
+
+    if (error instanceof Error) {
+      if (error.message.includes("needs at least one")) {
+        errorMessage = "Invalid family. Please refresh and try again.";
+      } else if (error.message.includes("unique constraint")) {
+        errorMessage = "User is already a member of this family.";
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

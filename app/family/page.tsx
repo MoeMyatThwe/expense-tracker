@@ -190,7 +190,14 @@ export default function FamilyPage() {
       return;
     }
 
-    if (!family) return;
+    if (!family || !family.id) {
+      setOperationModal({
+        type: "error",
+        title: "Family Not Found",
+        message: "Family data is not loaded. Please refresh the page or create a new family.",
+      });
+      return;
+    }
 
     if (!membership || membership.status !== "active") {
       setOperationModal({
@@ -205,6 +212,16 @@ export default function FamilyPage() {
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
+
+      if (!token) {
+        setOperationModal({
+          type: "error",
+          title: "Authentication Failed",
+          message: "Please log in again to continue.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       const res = await fetch(`/api/families/${family.id}/members`, {
         method: "POST",
@@ -233,18 +250,41 @@ export default function FamilyPage() {
         });
       } else {
         const error = await res.json();
+        let displayMessage = error.error || "Something went wrong";
+        
+        // Provide helpful context based on error type (check most specific first)
+        if (displayMessage.includes("not found")) {
+          displayMessage = "User account not found. They need to sign up and create an account in the app first before you can add them to your family.";
+        } else if (displayMessage.includes("already a member")) {
+          displayMessage = "This user is already in your family.";
+        } else if (displayMessage.includes("owner can add")) {
+          displayMessage = "Only the family owner can add members.";
+        } else if (displayMessage.includes("premium")) {
+          displayMessage = "Family feature requires an active premium membership.";
+        }
+
         setOperationModal({
           type: "error",
           title: "Failed to Add Member",
-          message: error.error || "Something went wrong",
+          message: displayMessage,
         });
       }
     } catch (error) {
       console.error("Error adding member:", error);
+      let displayMessage = "Failed to add member. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("JSON")) {
+          displayMessage = "Invalid response from server. Please try again.";
+        } else if (error.message.includes("fetch") || error.message.includes("network")) {
+          displayMessage = "Network error. Please check your connection and try again.";
+        }
+      }
+
       setOperationModal({
         type: "error",
-        title: "Error",
-        message: "Failed to add member. Please try again.",
+        title: "Failed to Add Member",
+        message: displayMessage,
       });
     } finally {
       setIsSubmitting(false);
