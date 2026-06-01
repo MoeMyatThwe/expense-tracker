@@ -121,61 +121,27 @@ async function importGmailForUser(userId: string) {
             parsedDate = new Date(`${details.date} ${currentYear}`);
           }
 
-          const existingByGmailId = await prisma.expense.findUnique({
-            where: {
-              userId_gmailId: {
+          // Only deduplicate by gmailId (userId + gmailId composite unique key)
+          // This allows different users to import the same Gmail message
+          try {
+            await prisma.expense.create({
+              data: {
                 userId,
+                title: details.merchant,
+                amount: details.amount,
+                category: "",
+                date: parsedDate,
+                description: `PayNow transaction: ${details.merchant}`,
+                source: "gmail",
+                recordType: "expense",
                 gmailId: msg.id!,
               },
-            },
-          });
-
-          if (!existingByGmailId) {
-            const startOfDay = new Date(parsedDate);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(parsedDate);
-            endOfDay.setHours(23, 59, 59, 999);
-
-            const duplicateByTransaction = await prisma.expense.findFirst({
-              where: {
-                userId,
-                amount: details.amount,
-                date: {
-                  gte: startOfDay,
-                  lte: endOfDay,
-                },
-                OR: [
-                  {
-                    title: {
-                      contains: details.merchant.split(" ")[0],
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    description: {
-                      contains: details.merchant,
-                      mode: "insensitive",
-                    },
-                  },
-                ],
-              },
             });
-
-            if (!duplicateByTransaction) {
-              await prisma.expense.create({
-                data: {
-                  userId,
-                  title: details.merchant,
-                  amount: details.amount,
-                  category: "",
-                  date: parsedDate,
-                  description: `PayNow transaction: ${details.merchant}`,
-                  source: "gmail",
-                  recordType: "expense",
-                  gmailId: msg.id!,
-                },
-              });
-              savedCount++;
+            savedCount++;
+          } catch (error: any) {
+            // Silently skip if (userId, gmailId) already exists (unique constraint violation)
+            if (error?.code !== "P2002") {
+              throw error;
             }
           }
         }

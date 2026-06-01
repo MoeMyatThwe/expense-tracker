@@ -180,66 +180,35 @@ export async function GET(req: NextRequest) {
             parsedDate = new Date(`${details.date} ${currentYear}`);
           }
 
-          // Store in database (upsert - update if exists, create if not)
-          // First check if this Gmail ID already exists
-          const existingByGmailId = await prisma.expense.findUnique({
-            where: {
-              userId_gmailId: {
+          // Store in database with userId + gmailId (composite unique key)
+          // This prevents the SAME user from importing the SAME Gmail message twice
+          // Different users can import the same Gmail message independently
+          try {
+            await prisma.expense.create({
+              data: {
                 userId: user.id,
+                title: details.merchant,
+                amount: details.amount,
+                category: "", // Empty so user can assign proper category
+                date: parsedDate,
+                description: `PayNow transaction: ${details.merchant}`,
+                source: "gmail",
+                recordType: "expense",
                 gmailId: msg.id!,
               },
-            },
-          });
-
-          if (!existingByGmailId) {
-            // Also check if a similar transaction exists (same amount + date + similar merchant)
-            // This prevents duplicates with manual entries
-            const startOfDay = new Date(parsedDate);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(parsedDate);
-            endOfDay.setHours(23, 59, 59, 999);
-
-            const duplicateByTransaction = await prisma.expense.findFirst({
-              where: {
-                userId: user.id,
-                amount: details.amount,
-                date: {
-                  gte: startOfDay,
-                  lte: endOfDay,
-                },
-                // Match transaction if title contains the merchant name (case-insensitive)
-                OR: [
-                  {
-                    title: {
-                      contains: details.merchant.split(" ")[0], // Match first word
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    description: {
-                      contains: details.merchant,
-                      mode: "insensitive",
-                    },
-                  },
-                ],
-              },
             });
-
-            if (!duplicateByTransaction) {
-              await prisma.expense.create({
-                data: {
-                  userId: user.id,
-                  title: details.merchant,
-                  amount: details.amount,
-                  category: "", // Empty so user can assign proper category
-                  date: parsedDate,
-                  description: `PayNow transaction: ${details.merchant}`,
-                  source: "gmail",
-                  recordType: "expense",
-                  gmailId: msg.id!,
-                },
-              });
-              savedCount++;
+            savedCount++;
+            console.log(
+              `[Gmail] ✅ Created expense: ${details.merchant} SGD ${details.amount} (${details.date})`,
+            );
+          } catch (error: any) {
+            // Prisma unique constraint error when (userId, gmailId) already exists
+            if (error?.code === "P2002") {
+              console.log(
+                `[Gmail] ⏭️  Skipped: ${details.merchant} - Already imported by this user (same Gmail ID)`,
+              );
+            } else {
+              throw error;
             }
           }
         }
