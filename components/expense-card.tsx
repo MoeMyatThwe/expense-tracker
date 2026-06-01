@@ -36,6 +36,8 @@ interface Expense {
   recurringInterval?: string | null;
   status: "completed" | "open" | "settled";
   counterparty?: string | null;
+  type: "personal" | "family";
+  createdByEmail?: string; // For family expenses
 }
 
 interface ExpenseCardProps {
@@ -219,6 +221,13 @@ export function ExpenseCard({
               {expense.description && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1 mb-2">
                   {expense.description}
+                </p>
+              )}
+
+              {/* Family expense creator */}
+              {expense.type === "family" && expense.createdByEmail && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 mb-2 font-medium">
+                  {expense.createdByEmail.split("@")[0]} shared this
                 </p>
               )}
 

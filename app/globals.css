@@ -265,7 +265,7 @@ body.dark .cinnamoroll-card {
 }
 
 .analytics-summary {
-  min-height: 12rem;
+  min-height: 8rem;
   display: flex;
   align-items: center;
   border: 2px solid rgba(154, 196, 231, 0.38);
@@ -376,7 +376,7 @@ body.dark .cinnamoroll-card {
   }
 
   .analytics-summary {
-    min-height: 10rem;
+    min-height: 7rem;
   }
 
   .analytics-summary p {

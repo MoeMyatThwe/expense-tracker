@@ -11,11 +11,61 @@ datasource db {
 model User {
   id        String   @id
   email     String   @unique
+  
+  // Family
+  familyId String?
+  family   Family?     @relation("FamilyMembers", fields: [familyId], references: [id])
+  ownedFamily Family? @relation("FamilyOwner")
+  
+  // Personal data
   expenses  Expense[]
   categories Category[]
   gmailConnections GmailConnection[]
   membership Membership?
   createdAt DateTime @default(now())
+  
+  @@index([familyId])
+}
+
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String   @unique
+  owner     User     @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Family members
+  members   User[]    @relation("FamilyMembers")
+  
+  // Family expenses (shared)
+  familyExpenses FamilyExpense[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([ownerId])
+}
+
+model FamilyExpense {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  
+  // Who recorded this
+  createdByUserId String
+  
+  title       String
+  amount      Float
+  category    String
+  date        DateTime @default(now())
+  description String?
+  recordType  String   @default("expense")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([familyId])
+  @@index([createdByUserId])
+  @@index([date])
 }
 
 model Membership {

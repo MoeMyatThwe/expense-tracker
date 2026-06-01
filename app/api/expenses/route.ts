@@ -27,11 +27,51 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const expenses = await prisma.expense.findMany({
+    // Get user's family if they're in one
+    const userWithFamily = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { familyId: true },
+    });
+
+    // Get personal expenses
+    const personalExpenses = await prisma.expense.findMany({
       where: { userId: user.id },
       orderBy: { date: "desc" },
     });
-    return NextResponse.json(expenses);
+
+    // Get family expenses if user is in a family
+    let familyExpenses = [];
+    if (userWithFamily?.familyId) {
+      familyExpenses = await prisma.familyExpense.findMany({
+        where: { familyId: userWithFamily.familyId },
+        orderBy: { date: "desc" },
+        include: {
+          family: { select: { id: true, name: true } },
+        },
+      });
+
+      // Get creator emails for family expenses
+      const creatorIds = [...new Set(familyExpenses.map((e) => e.createdByUserId))];
+      const creators = await prisma.user.findMany({
+        where: { id: { in: creatorIds } },
+        select: { id: true, email: true },
+      });
+      const creatorMap = Object.fromEntries(creators.map((c) => [c.id, c.email]));
+
+      // Map creator emails to expenses
+      familyExpenses = familyExpenses.map((e) => ({
+        ...e,
+        createdByEmail: creatorMap[e.createdByUserId] || "Unknown",
+      }));
+    }
+
+    // Combine and return
+    const allExpenses = [
+      ...personalExpenses.map((e) => ({ ...e, type: "personal" })),
+      ...familyExpenses.map((e) => ({ ...e, type: "family" })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return NextResponse.json(allExpenses);
   } catch (error) {
     console.error("Error fetching expenses:", error);
     return NextResponse.json(
@@ -69,7 +109,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const parsed = expenseCreateSchema.safeParse(await request.json());
+    const body = await request.json();
+    const { isFamilyExpense, ...expenseData } = body;
+
+    const parsed = expenseCreateSchema.safeParse(expenseData);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -95,6 +138,37 @@ export async function POST(request: Request) {
       counterparty,
     } = parsed.data;
 
+    // If family expense, save to FamilyExpense table
+    if (isFamilyExpense) {
+      const userWithFamily = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { familyId: true },
+      });
+
+      if (!userWithFamily?.familyId) {
+        return NextResponse.json(
+          { error: "You are not a member of a family" },
+          { status: 400 },
+        );
+      }
+
+      const familyExpense = await prisma.familyExpense.create({
+        data: {
+          familyId: userWithFamily.familyId,
+          createdByUserId: user.id,
+          title,
+          amount,
+          category,
+          date: new Date(date),
+          description: description || null,
+          recordType: recordType || "expense",
+        },
+      });
+
+      return NextResponse.json(familyExpense, { status: 201 });
+    }
+
+    // Regular personal expense
     const expense = await prisma.expense.create({
       data: {
         userId: user.id,

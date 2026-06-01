@@ -240,7 +240,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto max-w-5xl px-4 py-6">
+      <div className="container mx-auto max-w-7xl px-4 py-6">
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}

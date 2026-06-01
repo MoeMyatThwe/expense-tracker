@@ -71,7 +71,7 @@ interface Expense {
 interface ExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (expense: Omit<Expense, "id" | "createdAt" | "updatedAt">) => void;
+  onSave: (expense: Omit<Expense, "id" | "createdAt" | "updatedAt" | "type" | "createdByEmail">) => void;
   expense?: Expense | null;
   mode: "create" | "edit";
   categories?: CategoryOption[];

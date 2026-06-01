@@ -29,6 +29,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  try {
+    // Ensure user exists in database
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: { email: user.email },
+      create: { id: user.id, email: user.email },
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    return NextResponse.json(
+      { error: "Failed to create user" },
+      { status: 500 },
+    );
+  }
+
   let renewalMode: "auto" | "manual" = "auto";
   try {
     const body = await request.json();
@@ -52,20 +67,6 @@ export async function POST(request: Request) {
       metadata: { userId: user.id },
     });
     stripeCustomerId = customer.id;
-
-    await prisma.membership.upsert({
-      where: { userId: user.id },
-      create: {
-        userId: user.id,
-        stripeCustomerId,
-        status: "incomplete",
-        plan: plan.id,
-      },
-      update: {
-        stripeCustomerId,
-        plan: plan.id,
-      },
-    });
   }
 
   const commonSessionData = {
@@ -77,9 +78,7 @@ export async function POST(request: Request) {
           currency: plan.currency,
           product_data: {
             name:
-              renewalMode === "manual"
-                ? `${plan.name} - One Month`
-                : plan.name,
+              renewalMode === "manual" ? `${plan.name} - One Month` : plan.name,
             description: plan.description,
           },
           unit_amount: plan.amount,
@@ -99,44 +98,52 @@ export async function POST(request: Request) {
     },
   };
 
-  const session =
-    renewalMode === "manual"
-      ? await stripe.checkout.sessions.create({
-          ...commonSessionData,
-          mode: "payment",
-          payment_intent_data: {
-            metadata: {
-              userId: user.id,
-              plan: plan.id,
-              renewalMode,
+  try {
+    const session =
+      renewalMode === "manual"
+        ? await stripe.checkout.sessions.create({
+            ...commonSessionData,
+            mode: "payment",
+            payment_intent_data: {
+              metadata: {
+                userId: user.id,
+                plan: plan.id,
+                renewalMode,
+              },
             },
-          },
-        })
-      : await stripe.checkout.sessions.create({
-          ...commonSessionData,
-          mode: "subscription",
-          subscription_data: {
-            metadata: {
-              userId: user.id,
-              plan: plan.id,
-              renewalMode,
+          })
+        : await stripe.checkout.sessions.create({
+            ...commonSessionData,
+            mode: "subscription",
+            subscription_data: {
+              metadata: {
+                userId: user.id,
+                plan: plan.id,
+                renewalMode,
+              },
             },
-          },
-        });
+          });
 
-  await prisma.membership.upsert({
-    where: { userId: user.id },
-    create: {
-      userId: user.id,
-      stripeCustomerId,
-      status: "incomplete",
-      plan: plan.id,
-    },
-    update: {
-      stripeCustomerId,
-      plan: plan.id,
-    },
-  });
+    await prisma.membership.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        stripeCustomerId,
+        status: "incomplete",
+        plan: plan.id,
+      },
+      update: {
+        stripeCustomerId,
+        plan: plan.id,
+      },
+    });
 
-  return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
+    return NextResponse.json(
+      { error: "Failed to create checkout session" },
+      { status: 500 },
+    );
+  }
 }

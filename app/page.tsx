@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Wallet, RefreshCw, ReceiptText } from "lucide-react";
+import { Plus, Wallet, RefreshCw, ReceiptText, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ interface Expense {
   recurringInterval?: string | null;
   status: "completed" | "open" | "settled";
   counterparty?: string | null;
+  type: "personal" | "family";
+  createdByEmail?: string; // For family expenses
 }
 
 interface ExpenseResponse extends Omit<Expense, "date"> {
@@ -72,6 +74,8 @@ type LedgerFilter =
   | "reimbursement"
   | "recurring";
 
+type FamilyFilter = "personal" | "family" | "all";
+
 const ledgerFilterTabs = [
   { value: "all", labelKey: "all" },
   { value: "expense", labelKey: "expenses" },
@@ -87,15 +91,18 @@ export default function HomePage() {
   const router = useRouter();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filter, setFilter] = useState<LedgerFilter>("all");
+  const [familyFilter, setFamilyFilter] = useState<FamilyFilter>("all");
   const [monthFilter, setMonthFilter] = useState<string>(() => {
     // Default to current month
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stats, setStats] = useState<Stats | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [gmailRefreshing, setGmailRefreshing] = useState(false);
+  const [membership, setMembership] = useState<{ status: string } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -158,6 +165,35 @@ export default function HomePage() {
     }
   };
 
+  const fetchMembership = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.warn("[Membership] No session token available");
+        return;
+      }
+
+      const response = await fetch("/api/stripe/subscription", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Membership] Fetched:", data.membership);
+        setMembership(data.membership || null);
+      } else {
+        console.warn("[Membership] Failed to fetch:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching membership:", error);
+    }
+  };
+
   const refreshGmailData = async () => {
     setGmailRefreshing(true);
     try {
@@ -189,7 +225,7 @@ export default function HomePage() {
       toast.success("Gmail data refreshed! Reloading...");
       await fetchAllExpenses();
       await fetchStats();
-    } catch (error) {
+    } catch {
       toast.error("Failed to refresh Gmail data");
     } finally {
       setGmailRefreshing(false);
@@ -206,6 +242,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!authLoading && user) {
       fetchCategories();
+      fetchMembership();
       fetchAllExpenses();
       fetchStats();
 
@@ -220,6 +257,7 @@ export default function HomePage() {
 
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
 
   const fetchAllExpenses = async () => {
@@ -273,7 +311,10 @@ export default function HomePage() {
   };
 
   const handleAddExpense = async (
-    expenseData: Omit<Expense, "id" | "createdAt" | "updatedAt">,
+    expenseData: Omit<
+      Expense,
+      "id" | "createdAt" | "updatedAt" | "type" | "createdByEmail"
+    >,
   ) => {
     try {
       const {
@@ -332,7 +373,10 @@ export default function HomePage() {
   };
 
   const handleEditExpense = async (
-    expenseData: Omit<Expense, "id" | "createdAt" | "updatedAt">,
+    expenseData: Omit<
+      Expense,
+      "id" | "createdAt" | "updatedAt" | "type" | "createdByEmail"
+    >,
   ) => {
     if (!editingExpense) return;
 
@@ -520,7 +564,7 @@ export default function HomePage() {
     recurring: t("recurringLedger"),
   };
 
-  // Helper function to filter expenses by month
+  // Helper function to filter expenses by month and family type
   const filterExpensesByMonthAndSource = (allExpenses: Expense[]) => {
     return allExpenses.filter((expense) => {
       const recordMatch =
@@ -538,7 +582,12 @@ export default function HomePage() {
         expenseDate.getMonth() + 1,
       ).padStart(2, "0")}`;
       const monthMatch = expenseMonth === monthFilter;
-      return recordMatch && monthMatch;
+
+      // Filter by personal/family type
+      const familyMatch =
+        familyFilter === "all" ? true : expense.type === familyFilter;
+
+      return recordMatch && monthMatch && familyMatch;
     });
   };
   const filteredExpenses = filterExpensesByMonthAndSource(expenses);
@@ -682,6 +731,51 @@ export default function HomePage() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                {/* Family Filter Toggle */}
+                <div className="flex gap-2 ml-auto">
+                  {(["personal", "family", "all"] as const).map((value) => {
+                    const isNonPremium =
+                      value === "family" &&
+                      (!membership || membership.status !== "active");
+
+                    return (
+                      <Button
+                        key={value}
+                        onClick={() => !isNonPremium && setFamilyFilter(value)}
+                        variant={familyFilter === value ? "default" : "outline"}
+                        size="sm"
+                        disabled={isNonPremium}
+                        style={
+                          !isNonPremium && value === "family"
+                            ? {
+                                backgroundImage: `url('/assets/cinamoroll_theme/background/bg_stripes.jpg')`,
+                                backgroundSize: "300%",
+                                backgroundPosition: "center",
+                              }
+                            : undefined
+                        }
+                        className={`rounded-xl flex items-center gap-1 ${
+                          isNonPremium
+                            ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-500 hover:bg-gray-100"
+                            : familyFilter === value
+                              ? "text-slate-700 hover:opacity-90"
+                              : "border-blue-200 bg-white text-blue-600 hover:bg-blue-50"
+                        }`}
+                        title={
+                          isNonPremium ? "Upgrade to Premium to use Family" : ""
+                        }
+                      >
+                        {isNonPremium && <Lock className="w-4 h-4" />}
+                        {value === "personal"
+                          ? "My Expenses"
+                          : value === "family"
+                            ? "Family"
+                            : "All Expenses"}
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="ledger-browser-content w-full">
@@ -746,9 +840,13 @@ export default function HomePage() {
         <ExpenseDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onSave={
-            dialogMode === "create" ? handleAddExpense : handleEditExpense
-          }
+          onSave={(expenseData) => {
+            if (dialogMode === "create") {
+              handleAddExpense(expenseData);
+            } else {
+              handleEditExpense(expenseData);
+            }
+          }}
           expense={editingExpense}
           mode={dialogMode}
           categories={categories}

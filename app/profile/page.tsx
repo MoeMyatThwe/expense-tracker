@@ -16,6 +16,7 @@ import {
   Settings,
   Type,
   UserRound,
+  Users,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -502,7 +503,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto max-w-3xl px-4 py-6">
+      <div className="container mx-auto max-w-7xl px-4 py-6">
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -810,6 +811,27 @@ export default function ProfilePage() {
                     {t("autoRenewCancelScheduled")}
                   </p>
                 ) : null}
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Users className="h-5 w-5 shrink-0 text-[#859BB2]" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-800 dark:text-gray-100">
+                      Family Settings
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Manage your family group and share expenses
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => router.push("/family")}
+                  className="h-10 shrink-0 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7]"
+                >
+                  Manage
+                </Button>
               </div>
 
               <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
