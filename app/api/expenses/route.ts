@@ -28,6 +28,15 @@ async function getCurrentUser(request: Request) {
   return user;
 }
 
+async function ensureAppUser(user: { id: string; email?: string | null }) {
+  return prisma.user.upsert({
+    where: { id: user.id },
+    update: { email: user.email || "" },
+    create: { id: user.id, email: user.email || "" },
+    select: { familyId: true },
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser(request);
@@ -36,11 +45,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's family if they're in one
-    const userWithFamily = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { familyId: true },
-    });
+    // New OAuth users may not have an app database row yet.
+    const userWithFamily = await ensureAppUser(user);
 
     // Get personal expenses
     const personalExpenses = await prisma.expense.findMany({
@@ -121,6 +127,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    await ensureAppUser(user);
 
     const body = await request.json();
     const { isFamilyExpense, ...expenseData } = body;

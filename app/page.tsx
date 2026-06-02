@@ -301,6 +301,10 @@ export default function HomePage() {
           router.push("/auth");
           return;
         }
+        if (response.status === 404) {
+          setExpenses([]);
+          return;
+        }
         throw new Error("Failed to fetch expenses");
       }
 
