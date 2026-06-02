@@ -889,7 +889,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3">
+                <div className="grid w-full max-w-md gap-3">
                   <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
