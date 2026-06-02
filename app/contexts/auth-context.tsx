@@ -29,6 +29,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getPublicAppUrl() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/$/, "");
+  }
+
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  return "";
+}
+
 // Helper function to convert Supabase errors to user-friendly messages
 function getErrorMessage(error: unknown): AuthError {
   if (error === null || error === undefined) {
@@ -176,6 +191,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${getPublicAppUrl()}/auth/callback`,
+        },
       });
 
       if (error) {
@@ -251,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${getPublicAppUrl()}/auth/callback`,
         },
       });
 
@@ -270,7 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${getPublicAppUrl()}/auth/reset-password`,
       });
 
       if (error) {
