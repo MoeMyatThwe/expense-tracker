@@ -59,6 +59,46 @@ const getAvailableYears = () => {
   );
 };
 
+function createEmptyStats(year: string, month: string): Stats {
+  const selectedDate = new Date(Number(year), Number(month) - 1, 1);
+  const lastMonthDate = new Date(Number(year), Number(month) - 2, 1);
+  const monthlyData = Array.from({ length: 12 }, (_, index) => {
+    const monthDate = new Date(Number(year), index, 1);
+    return {
+      name: monthDate.toLocaleString("default", { month: "short" }),
+      month: monthDate.toLocaleString("default", { month: "long" }),
+      year,
+      value: 0,
+    };
+  });
+
+  return {
+    totalThisMonth: 0,
+    totalLastMonth: 0,
+    change: "0.0",
+    trend: "up",
+    expenseCount: 0,
+    categoryData: [],
+    yearlyData: [],
+    monthlyData,
+    monthlyCategoryData: monthlyData.map((item) => ({
+      month: item.month,
+      year: item.year,
+      categories: [],
+    })),
+    currentMonth: selectedDate.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    }),
+    selectedMonth: selectedDate.toLocaleString("default", { month: "long" }),
+    selectedYear: year,
+    lastMonth: lastMonthDate.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    }),
+  };
+}
+
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth();
   const { language, t } = useLanguage();
@@ -105,11 +145,16 @@ export default function AnalyticsPage() {
       );
 
       if (!response.ok) {
+        if (response.status === 401) {
+          router.push("/auth");
+          return;
+        }
         throw new Error("Failed to fetch stats");
       }
 
       setStats(await response.json());
     } catch (error) {
+      setStats(createEmptyStats(selectedYear, selectedMonth));
       toast.error("Failed to load analytics");
     } finally {
       setLoading(false);

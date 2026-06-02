@@ -19,9 +19,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Expense Tracker - Manage Your Expenses",
+  title: "Cinnamoroll's Expense Tracker",
   description:
-    "A modern, beautiful expense tracker with analytics and insights",
+    "Track expenses, income, reimbursements, and money owed.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.png",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/favicon.png",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({

@@ -24,6 +24,14 @@ async function getCurrentUser(request: Request) {
   return user;
 }
 
+async function ensureAppUser(user: { id: string; email?: string | null }) {
+  await prisma.user.upsert({
+    where: { id: user.id },
+    update: { email: user.email || "" },
+    create: { id: user.id, email: user.email || "" },
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser(request);
@@ -31,6 +39,8 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    await ensureAppUser(user);
 
     const { searchParams } = new URL(request.url);
     const now = new Date();
