@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -71,7 +71,12 @@ interface Expense {
 interface ExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (expense: Omit<Expense, "id" | "createdAt" | "updatedAt" | "type" | "createdByEmail">) => void;
+  onSave: (
+    expense: Omit<
+      Expense,
+      "id" | "createdAt" | "updatedAt" | "type" | "createdByEmail"
+    >,
+  ) => void;
   expense?: Expense | null;
   mode: "create" | "edit";
   categories?: CategoryOption[];
@@ -152,26 +157,39 @@ const detectCategory = (transcript: string): string | null => {
   return null;
 };
 
+const defaultFormData = () => ({
+  title: "",
+  amount: "",
+  category: "",
+  date: new Date().toISOString().split("T")[0],
+  description: "",
+  recordType: "expense",
+  isRecurring: false,
+  recurringInterval: "monthly",
+  status: "completed",
+  counterparty: "",
+});
+
+const toDateInputValue = (value?: Date | string | null) => {
+  const date = value ? new Date(value) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().split("T")[0];
+  }
+
+  return date.toISOString().split("T")[0];
+};
+
 export function ExpenseDialog({
   open,
   onOpenChange,
   onSave,
+  expense,
   mode,
   categories = DEFAULT_CATEGORIES,
 }: ExpenseDialogProps) {
   const { t } = useLanguage();
-  const [formData, setFormData] = useState({
-    title: "",
-    amount: "",
-    category: "",
-    date: new Date().toISOString().split("T")[0],
-    description: "",
-    recordType: "expense",
-    isRecurring: false,
-    recurringInterval: "monthly",
-    status: "completed",
-    counterparty: "",
-  });
+  const [formData, setFormData] = useState(defaultFormData);
 
   const [listening, setListening] = useState(false);
   const [source, setSource] = useState<"manual" | "voice" | "gmail">("manual");
@@ -183,6 +201,33 @@ export function ExpenseDialog({
       (window as SpeechRecognitionWindow).SpeechRecognition ||
       (window as SpeechRecognitionWindow).webkitSpeechRecognition,
     );
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (mode === "edit" && expense) {
+      setFormData({
+        title: expense.title || "",
+        amount: String(expense.amount ?? ""),
+        category:
+          expense.recordType === "expense" ? expense.category || "" : "",
+        date: toDateInputValue(expense.date),
+        description: expense.description || "",
+        recordType: expense.recordType || "expense",
+        isRecurring: Boolean(expense.isRecurring),
+        recurringInterval: expense.recurringInterval || "monthly",
+        status: expense.status || "completed",
+        counterparty: expense.counterparty || "",
+      });
+      setSource(expense.source || "manual");
+      return;
+    }
+
+    setFormData(defaultFormData());
+    setSource("manual");
+  }, [expense, mode, open]);
 
   // Start/stop speech recognition
   const handleSpeech = () => {

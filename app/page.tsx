@@ -337,6 +337,20 @@ export default function HomePage() {
     }
   };
 
+  const getApiErrorMessage = async (
+    response: Response,
+    fallback: string,
+  ) => {
+    const data = await response.json().catch(() => null);
+    const fieldErrors = data?.issues?.fieldErrors;
+    const firstFieldError =
+      fieldErrors && typeof fieldErrors === "object"
+        ? Object.values(fieldErrors).flat().find(Boolean)
+        : null;
+
+    return String(firstFieldError || data?.error || fallback);
+  };
+
   const handleAddExpense = async (
     expenseData: Omit<
       Expense,
@@ -378,14 +392,14 @@ export default function HomePage() {
         fetchStats();
         setDialogOpen(false);
       } else {
-        const error = await response.json();
         setOperationModal({
           open: true,
           type: "error",
           title: "Failed to Create Expense",
-          message:
-            error.error ||
+          message: await getApiErrorMessage(
+            response,
             "Failed to add expense. Please check your input and try again.",
+          ),
         });
       }
     } catch (error) {
@@ -443,14 +457,14 @@ export default function HomePage() {
         setEditingExpense(null);
         setDialogOpen(false);
       } else {
-        const data = await response.json();
         setOperationModal({
           open: true,
           type: "error",
           title: "Failed to Update Expense",
-          message:
-            data.error ||
+          message: await getApiErrorMessage(
+            response,
             "Failed to update expense. Please check your input and try again.",
+          ),
         });
       }
     } catch (error) {
@@ -506,13 +520,14 @@ export default function HomePage() {
         fetchExpenses();
         fetchStats();
       } else {
-        const data = await response.json();
         setOperationModal({
           open: true,
           type: "error",
           title: "Deletion Failed",
-          message:
-            data.error || "Failed to delete the expense. Please try again.",
+          message: await getApiErrorMessage(
+            response,
+            "Failed to delete the expense. Please try again.",
+          ),
         });
       }
     } catch (error) {

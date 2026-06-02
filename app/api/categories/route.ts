@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ensureAppUser } from "@/lib/app-user";
 import {
   CATEGORY_ICONS,
   DEFAULT_CATEGORIES,
@@ -27,11 +28,15 @@ async function ensureUserAndDefaultCategories(user: {
   id: string;
   email?: string | null;
 }) {
-  await prisma.user.upsert({
-    where: { id: user.id },
-    update: { email: user.email || "" },
-    create: { id: user.id, email: user.email || "" },
+  await ensureAppUser(user);
+
+  const categoryCount = await prisma.category.count({
+    where: { userId: user.id },
   });
+
+  if (categoryCount > 0) {
+    return;
+  }
 
   await prisma.category.createMany({
     data: DEFAULT_CATEGORIES.map((category) => ({
@@ -121,8 +126,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const category = await prisma.category.create({
-      data: {
+    const category = await prisma.category.upsert({
+      where: {
+        userId_name: {
+          userId: user.id,
+          name,
+        },
+      },
+      update: {
+        icon,
+      },
+      create: {
         userId: user.id,
         name,
         icon,

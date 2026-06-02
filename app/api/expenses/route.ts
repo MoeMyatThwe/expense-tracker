@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ensureAppUser } from "@/lib/app-user";
 import { expenseCreateSchema } from "@/lib/validation";
 
 type FamilyExpenseWithEmail = Prisma.FamilyExpenseGetPayload<{
@@ -12,6 +13,14 @@ type FamilyExpenseWithEmail = Prisma.FamilyExpenseGetPayload<{
 }> & {
   createdByEmail: string;
 };
+
+function getPrismaCode(error: unknown) {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    return String(error.code);
+  }
+
+  return null;
+}
 
 // Helper to get current user
 async function getCurrentUser(request: Request) {
@@ -26,15 +35,6 @@ async function getCurrentUser(request: Request) {
   } = await supabase.auth.getUser(token);
 
   return user;
-}
-
-async function ensureAppUser(user: { id: string; email?: string | null }) {
-  return prisma.user.upsert({
-    where: { id: user.id },
-    update: { email: user.email || "" },
-    create: { id: user.id, email: user.email || "" },
-    select: { familyId: true },
-  });
 }
 
 export async function GET(request: Request) {
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
     // Get family expenses if user is in a family
     let familyExpenses: FamilyExpenseWithEmail[] = [];
-    if (userWithFamily?.familyId) {
+    if (userWithFamily.familyId) {
       const rawFamilyExpenses = await prisma.familyExpense.findMany({
         where: { familyId: userWithFamily.familyId },
         orderBy: { date: "desc" },
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await ensureAppUser(user);
+    const appUser = await ensureAppUser(user);
 
     const body = await request.json();
     const { isFamilyExpense, ...expenseData } = body;
@@ -155,15 +155,15 @@ export async function POST(request: Request) {
       status,
       counterparty,
     } = parsed.data;
+    const expenseDate = new Date(date);
+
+    if (Number.isNaN(expenseDate.getTime())) {
+      return NextResponse.json({ error: "Invalid expense date" }, { status: 400 });
+    }
 
     // If family expense, save to FamilyExpense table
     if (isFamilyExpense) {
-      const userWithFamily = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { familyId: true },
-      });
-
-      if (!userWithFamily?.familyId) {
+      if (!appUser.familyId) {
         return NextResponse.json(
           { error: "You are not a member of a family" },
           { status: 400 },
@@ -172,12 +172,12 @@ export async function POST(request: Request) {
 
       const familyExpense = await prisma.familyExpense.create({
         data: {
-          familyId: userWithFamily.familyId,
+          familyId: appUser.familyId,
           createdByUserId: user.id,
           title,
           amount,
           category,
-          date: new Date(date),
+          date: expenseDate,
           description: description || null,
           recordType: recordType || "expense",
         },
@@ -193,8 +193,8 @@ export async function POST(request: Request) {
         title,
         amount,
         category,
-        date: new Date(date),
-        description,
+        date: expenseDate,
+        description: description || null,
         source: source || "manual",
         recordType: recordType || "expense",
         isRecurring: Boolean(isRecurring),
@@ -211,6 +211,25 @@ export async function POST(request: Request) {
     return NextResponse.json(expense, { status: 201 });
   } catch (error) {
     console.error("Error creating expense:", error);
+    const prismaCode = getPrismaCode(error);
+
+    if (prismaCode === "P2003") {
+      return NextResponse.json(
+        { error: "Your account is still syncing. Please refresh and try again." },
+        { status: 409 },
+      );
+    }
+
+    if (prismaCode === "P2021" || prismaCode === "P2022") {
+      return NextResponse.json(
+        {
+          error:
+            "The database tables are not fully set up. Please run the latest Prisma migration.",
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to create expense" },
       { status: 500 },

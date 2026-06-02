@@ -48,15 +48,19 @@ export function ConfirmationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-200 bg-white">
+      <DialogContent className="rounded-2xl border-2 border-[#D4E5F7] bg-white shadow-xl sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            {isDangerous && <AlertTriangle className="h-5 w-5 text-red-500" />}
-            <DialogTitle className="text-lg font-semibold text-slate-800">
+            {isDangerous && (
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E1EDFD]">
+                <AlertTriangle className="h-5 w-5 text-[#859BB2]" />
+              </span>
+            )}
+            <DialogTitle className="text-lg font-semibold text-[#334155]">
               {title}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-slate-600">
+          <DialogDescription className="mt-3 text-[#64748b]">
             {description}
           </DialogDescription>
         </DialogHeader>
@@ -65,18 +69,14 @@ export function ConfirmationModal({
             variant="outline"
             onClick={handleCancel}
             disabled={isLoading}
-            className="border-slate-200 text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border-[#D4E5F7] bg-[#E1EDFD]/70 text-[#334155] hover:bg-[#D4E5F7]"
           >
             {cancelText}
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isLoading}
-            className={
-              isDangerous
-                ? "bg-red-500 text-white hover:bg-red-600"
-                : "bg-blue-500 text-white hover:bg-blue-600"
-            }
+            className="rounded-xl bg-[#859BB2] text-white hover:bg-[#6f879d]"
           >
             {isLoading ? "Processing..." : confirmText}
           </Button>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { ensureAppUser } from "@/lib/app-user";
 import { CATEGORY_ICONS, normalizeCategoryName } from "@/lib/category-options";
 import { categoryUpdateSchema } from "@/lib/validation";
 
@@ -28,6 +29,8 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    await ensureAppUser(user);
 
     const { id } = await params;
     const parsed = categoryUpdateSchema.safeParse(await request.json());
@@ -104,14 +107,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    await ensureAppUser(user);
+
     const { id } = await params;
     const result = await prisma.category.deleteMany({
       where: { id, userId: user.id },
     });
-
-    if (result.count === 0) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { ensureAppUser } from "@/lib/app-user";
 import {
   startOfMonth,
   endOfMonth,
@@ -22,14 +23,6 @@ async function getCurrentUser(request: Request) {
   } = await supabase.auth.getUser(token);
 
   return user;
-}
-
-async function ensureAppUser(user: { id: string; email?: string | null }) {
-  await prisma.user.upsert({
-    where: { id: user.id },
-    update: { email: user.email || "" },
-    create: { id: user.id, email: user.email || "" },
-  });
 }
 
 function createEmptyStats(selectedDate: Date) {

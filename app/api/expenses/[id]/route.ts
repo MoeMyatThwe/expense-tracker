@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { ensureAppUser } from "@/lib/app-user";
 import { expenseUpdateSchema } from "@/lib/validation";
 
 async function getCurrentUser(request: Request) {
@@ -27,6 +28,8 @@ export async function PUT(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    await ensureAppUser(user);
 
     const { id } = await params;
     const parsed = expenseUpdateSchema.safeParse(await request.json());
@@ -78,16 +81,47 @@ export async function PUT(
       where: { id, userId: user.id },
     });
 
-    if (!existingExpense) {
+    if (existingExpense) {
+      const expense = await prisma.expense.update({
+        where: { id: existingExpense.id },
+        data: updateData,
+      });
+
+      return NextResponse.json(expense);
+    }
+
+    const existingFamilyExpense = await prisma.familyExpense.findFirst({
+      where: {
+        id,
+        family: {
+          members: {
+            some: { id: user.id },
+          },
+        },
+      },
+    });
+
+    if (!existingFamilyExpense) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const expense = await prisma.expense.update({
-      where: { id: existingExpense.id },
-      data: updateData,
+    const familyUpdateData: Record<string, unknown> = {};
+    if (title !== undefined) familyUpdateData.title = title;
+    if (amount !== undefined)
+      familyUpdateData.amount =
+        typeof amount === "string" ? parseFloat(amount) : amount;
+    if (category !== undefined) familyUpdateData.category = category;
+    if (date !== undefined) familyUpdateData.date = new Date(date);
+    if (description !== undefined)
+      familyUpdateData.description = description || null;
+    if (recordType !== undefined) familyUpdateData.recordType = recordType;
+
+    const familyExpense = await prisma.familyExpense.update({
+      where: { id: existingFamilyExpense.id },
+      data: familyUpdateData,
     });
 
-    return NextResponse.json(expense);
+    return NextResponse.json(familyExpense);
   } catch (error) {
     console.error("Error updating expense:", error);
     return NextResponse.json(
@@ -108,12 +142,29 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    await ensureAppUser(user);
+
     const { id } = await params;
     const result = await prisma.expense.deleteMany({
       where: { id, userId: user.id },
     });
 
-    if (result.count === 0) {
+    if (result.count > 0) {
+      return NextResponse.json({ success: true });
+    }
+
+    const familyResult = await prisma.familyExpense.deleteMany({
+      where: {
+        id,
+        family: {
+          members: {
+            some: { id: user.id },
+          },
+        },
+      },
+    });
+
+    if (familyResult.count === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

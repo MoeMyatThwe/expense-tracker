@@ -84,5 +84,5 @@ export const expenseUpdateSchema = z
 
 export const userCreateSchema = z.object({
   id: z.string().trim().min(1),
-  email: z.string().trim().email(),
+  email: z.string().trim().optional().nullable(),
 });
