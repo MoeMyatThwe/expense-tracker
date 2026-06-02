@@ -131,6 +131,7 @@
     background-attachment: fixed;
     background-position: center;
     font-size: calc(1rem * var(--app-text-scale));
+    overflow-x: hidden;
   }
   body.dark,
   .dark body {
@@ -166,6 +167,9 @@ body.dark .cinnamoroll-card {
   --tab-panel-bg: rgba(225, 237, 253, 0.76);
   --tab-active-bg: #859bb2;
   --tab-idle-bg: rgba(255, 255, 255, 0.78);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
   padding-top: 0.1rem;
 }
 
@@ -174,8 +178,10 @@ body.dark .cinnamoroll-card {
   align-items: flex-end;
   gap: 0;
   overflow-x: auto;
+  max-width: 100%;
   padding: 0 0 0 0.55rem;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ledger-browser-tabs::-webkit-scrollbar {
@@ -232,6 +238,8 @@ body.dark .cinnamoroll-card {
 
 .ledger-browser-panel {
   min-height: 34rem;
+  width: 100%;
+  max-width: 100%;
   padding: 1.55rem 1.65rem 1.85rem;
   border: 2px solid var(--tab-border);
   border-radius: 0 1.5rem 1.5rem 1.5rem;
@@ -242,10 +250,11 @@ body.dark .cinnamoroll-card {
 
 .ledger-browser-controls {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
   width: 100%;
+  min-width: 0;
 }
 
 .ledger-browser-content {
@@ -358,13 +367,33 @@ body.dark .cinnamoroll-card {
 }
 
 @media (max-width: 640px) {
+  .cinnamoroll-card {
+    border-radius: 1.25rem;
+  }
+
+  .ledger-browser-tabs {
+    padding-left: 0.35rem;
+  }
+
   .ledger-browser-tab {
-    min-width: 6.7rem;
+    min-width: 5.9rem;
+    height: 3rem;
+    padding: 0 0.9rem;
+    font-size: 0.9rem;
+  }
+
+  .ledger-browser-tab.is-active {
+    height: 3.25rem;
   }
 
   .ledger-browser-panel {
     min-height: 28rem;
-    padding: 1.1rem;
+    border-radius: 0 1.25rem 1.25rem 1.25rem;
+    padding: 1rem;
+  }
+
+  .ledger-browser-controls {
+    gap: 0.65rem;
   }
 
   .ledger-browser-content {

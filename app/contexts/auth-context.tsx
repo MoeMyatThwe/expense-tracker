@@ -44,6 +44,14 @@ function getPublicAppUrl() {
   return "";
 }
 
+async function syncAppUser(user: User) {
+  await fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(user),
+  });
+}
+
 // Helper function to convert Supabase errors to user-friendly messages
 function getErrorMessage(error: unknown): AuthError {
   if (error === null || error === undefined) {
@@ -154,10 +162,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession();
 
         if (session?.user) {
-          setUser({
+          const appUser = {
             id: session.user.id,
             email: session.user.email || "",
-          });
+          };
+          setUser(appUser);
+          await syncAppUser(appUser);
         }
       } catch (error) {
         console.error("Auth check error:", error);
@@ -173,9 +183,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        setUser({
+        const appUser = {
           id: session.user.id,
           email: session.user.email || "",
+        };
+        setUser(appUser);
+        void syncAppUser(appUser).catch((error) => {
+          console.error("User sync error:", error);
         });
       } else {
         setUser(null);
@@ -207,13 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getUser();
 
       if (authUser) {
-        await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: authUser.id,
-            email: authUser.email,
-          }),
+        await syncAppUser({
+          id: authUser.id,
+          email: authUser.email || "",
         });
       }
 
@@ -241,19 +251,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getSession();
 
       if (session?.user) {
-        setUser({
+        const appUser = {
           id: session.user.id,
           email: session.user.email || "",
-        });
+        };
+        setUser(appUser);
 
-        await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: session.user.id,
-            email: session.user.email,
-          }),
-        });
+        await syncAppUser(appUser);
       }
 
       router.push("/");

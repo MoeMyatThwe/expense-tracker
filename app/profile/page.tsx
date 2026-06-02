@@ -502,30 +502,32 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto max-w-7xl px-4 py-6">
+    <div className="min-h-screen overflow-x-hidden">
+      <div className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-4 sm:py-6">
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="cinnamoroll-card mb-6 bg-cover bg-center p-6"
+          className="cinnamoroll-card mb-6 overflow-hidden bg-cover bg-center p-4 sm:p-6"
           style={{
             backgroundImage:
               "url('/assets/cinamoroll_theme/background/CategoryBannerBackground.png')",
           }}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <Image
               src="/assets/cinamoroll_theme/App Logo/profile.png"
               alt="Settings"
               width={72}
               height={72}
-              className="h-18 w-18 rounded-full border-2 border-[#D4E5F7] bg-white object-cover"
+              className="h-16 w-16 shrink-0 rounded-full border-2 border-[#D4E5F7] bg-white object-cover sm:h-18 sm:w-18"
             />
-            <div>
-              <h1 className="text-3xl font-bold text-[#859BB2]">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-[#859BB2] sm:text-3xl">
                 {t("settings")}
               </h1>
-              <p className="text-sm text-gray-600">{t("settingsSubtitle")}</p>
+              <p className="text-sm leading-snug text-gray-600">
+                {t("settingsSubtitle")}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -534,7 +536,7 @@ export default function ProfilePage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="cinnamoroll-card p-6"
+            className="cinnamoroll-card p-4 sm:p-6"
           >
             <div className="mb-4 flex items-center gap-2">
               <Settings className="h-5 w-5 text-[#859BB2]" />
@@ -544,8 +546,8 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid gap-4">
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
-                <div>
+              <div className="flex flex-col gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="font-medium text-gray-800 dark:text-gray-100">
                     {t("theme")}
                   </p>
@@ -594,10 +596,10 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
                   <Languages className="h-5 w-5 text-[#859BB2]" />
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-medium text-gray-800 dark:text-gray-100">
                       {t("language")}
                     </p>
@@ -605,7 +607,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-36 rounded-xl border-[#D4E5F7] bg-white text-[#334155]">
+                  <SelectTrigger className="w-full rounded-xl border-[#D4E5F7] bg-white text-[#334155] sm:w-36">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -624,7 +626,7 @@ export default function ProfilePage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="cinnamoroll-card p-6"
+            className="cinnamoroll-card p-4 sm:p-6"
           >
             <div className="mb-4 flex items-center gap-2">
               <UserRound className="h-5 w-5 text-[#859BB2]" />
@@ -645,14 +647,14 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                     <CreditCard className="h-5 w-5 shrink-0 text-[#859BB2]" />
                     <div className="min-w-0">
                       <p className="font-medium text-gray-800 dark:text-gray-100">
                         {t("membership")}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm leading-snug text-gray-500">
                         {membership?.active
                           ? t("membershipActive", {
                               status: membership.membership?.status || "active",
@@ -681,12 +683,12 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 flex-col gap-2">
+                  <div className="grid w-full shrink-0 gap-2 sm:w-auto">
                     <Button
                       type="button"
                       onClick={membershipAction}
                       disabled={membershipLoading}
-                      className="h-10 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7]"
+                      className="h-10 w-full rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7] sm:w-auto"
                     >
                       {membershipLoading
                         ? t("loading")
@@ -702,14 +704,14 @@ export default function ProfilePage() {
                         variant="outline"
                         onClick={cancelSubscription}
                         disabled={membershipLoading}
-                        className="h-10 rounded-xl border-[#D4E5F7] bg-white/80 px-4 text-[#64748b] hover:bg-[#E1EDFD]"
+                        className="h-10 w-full rounded-xl border-[#D4E5F7] bg-white/80 px-4 text-[#64748b] hover:bg-[#E1EDFD] sm:w-auto"
                       >
                         {t("cancelAutoRenew")}
                       </Button>
                     ) : null}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {(["auto", "manual"] as const).map((mode) => (
                     <button
                       key={mode}
@@ -746,7 +748,7 @@ export default function ProfilePage() {
                     </p>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E1EDFD] bg-white/80 p-3">
+                <div className="flex flex-col gap-3 rounded-xl border border-[#E1EDFD] bg-white/80 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-gray-800">
@@ -799,7 +801,7 @@ export default function ProfilePage() {
                     variant="outline"
                     onClick={() => setPaymentHistoryOpen(true)}
                     disabled={billingHistory.length === 0}
-                    className="h-9 shrink-0 rounded-xl border-[#D4E5F7] bg-[#E1EDFD]/70 px-4 text-[#64748b] hover:bg-[#D4E5F7]"
+                    className="h-9 w-full shrink-0 rounded-xl border-[#D4E5F7] bg-[#E1EDFD]/70 px-4 text-[#64748b] hover:bg-[#D4E5F7] sm:w-auto"
                   >
                     {t("view")}
                   </Button>
@@ -813,14 +815,14 @@ export default function ProfilePage() {
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
+              <div className="flex flex-col gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   <Users className="h-5 w-5 shrink-0 text-[#859BB2]" />
                   <div className="min-w-0">
                     <p className="font-medium text-gray-800 dark:text-gray-100">
                       Family Settings
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm leading-snug text-gray-500">
                       Manage your family group and share expenses
                     </p>
                   </div>
@@ -828,13 +830,13 @@ export default function ProfilePage() {
                 <Button
                   type="button"
                   onClick={() => router.push("/family")}
-                  className="h-10 shrink-0 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7]"
+                  className="h-10 w-full shrink-0 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7] sm:w-auto"
                 >
                   Manage
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60">
+              <div className="flex flex-col gap-4 rounded-xl border border-[#E1EDFD] bg-white/70 p-4 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   {gmailStatus.connected ? (
                     <Link2 className="h-5 w-5 shrink-0 text-[#859BB2]" />
@@ -845,7 +847,7 @@ export default function ProfilePage() {
                     <p className="font-medium text-gray-800 dark:text-gray-100">
                       {t("gmailConnection")}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="break-words text-sm leading-snug text-gray-500">
                       {gmailStatus.connected
                         ? t("gmailConnected", {
                             email:
@@ -861,7 +863,7 @@ export default function ProfilePage() {
                     gmailStatus.connected ? disconnectGmail : connectGmail
                   }
                   disabled={gmailLoading}
-                  className="h-10 shrink-0 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7]"
+                  className="h-10 w-full shrink-0 rounded-xl bg-[#B2D7FF] px-4 text-white hover:bg-[#9AC4E7] sm:w-auto"
                 >
                   {gmailLoading
                     ? t("connecting")
@@ -931,7 +933,7 @@ export default function ProfilePage() {
               <Button
                 onClick={signOut}
                 variant="outline"
-                className="h-11 w-fit rounded-xl border-[#D4E5F7] px-6 text-[#859BB2] hover:bg-[#E1EDFD]"
+                className="h-11 w-full rounded-xl border-[#D4E5F7] px-6 text-[#859BB2] hover:bg-[#E1EDFD] sm:w-fit"
               >
                 <LogOut className="h-4 w-4" />
                 {t("logout")}
@@ -941,24 +943,24 @@ export default function ProfilePage() {
         </div>
       </div>
       <Dialog open={paymentHistoryOpen} onOpenChange={setPaymentHistoryOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border-2 border-[#D4E5F7] p-0 sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-[#D4E5F7] p-0 sm:max-w-lg">
           <div className="flex max-h-[calc(100dvh-2rem)] flex-col bg-[#F8FBFF]">
-            <DialogHeader className="shrink-0 space-y-2 px-6 pt-6">
-              <DialogTitle className="text-2xl text-[#859BB2]">
+            <DialogHeader className="shrink-0 space-y-2 px-4 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="text-xl text-[#859BB2] sm:text-2xl">
                 {t("paymentHistory")}
               </DialogTitle>
               <DialogDescription className="text-gray-600">
                 {t("paymentHistoryDesc")}
               </DialogDescription>
             </DialogHeader>
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-4 sm:px-6">
               {billingHistory.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[#E1EDFD] bg-white px-4 py-3"
+                  className="flex flex-col gap-2 rounded-xl border border-[#E1EDFD] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-800">
+                    <p className="break-words text-sm font-semibold text-gray-800 sm:truncate">
                       {item.description}
                     </p>
                     <p className="text-xs text-[#859BB2]">

@@ -9,7 +9,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <main className={showNav ? "pb-24" : undefined}>{children}</main>
+      <main className={showNav ? "overflow-x-hidden pb-24" : "overflow-x-hidden"}>
+        {children}
+      </main>
       <BottomNav />
     </>
   );

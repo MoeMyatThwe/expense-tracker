@@ -194,7 +194,12 @@ export default function HomePage() {
     }
   };
 
-  const refreshGmailData = async () => {
+  const refreshGmailData = async (
+    options: {
+      silentIfNotConnected?: boolean;
+      silentErrors?: boolean;
+    } = {},
+  ) => {
     setGmailRefreshing(true);
     try {
       const {
@@ -202,7 +207,9 @@ export default function HomePage() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        toast.error("Not authenticated");
+        if (!options.silentErrors) {
+          toast.error("Not authenticated");
+        }
         return;
       }
 
@@ -215,18 +222,24 @@ export default function HomePage() {
       if (!response.ok) {
         const error = await response.json().catch(() => null);
         if (response.status === 401 && error?.needsConnection) {
-          toast.error("Please connect Gmail in Settings first");
-          router.push("/profile");
+          if (!options.silentIfNotConnected) {
+            toast.error("Please connect Gmail in Settings first");
+            router.push("/profile");
+          }
           return;
         }
         throw new Error("Failed to refresh Gmail data");
       }
 
-      toast.success("Gmail data refreshed! Reloading...");
+      if (!options.silentErrors) {
+        toast.success("Gmail data refreshed! Reloading...");
+      }
       await fetchAllExpenses();
       await fetchStats();
     } catch {
-      toast.error("Failed to refresh Gmail data");
+      if (!options.silentErrors) {
+        toast.error("Failed to refresh Gmail data");
+      }
     } finally {
       setGmailRefreshing(false);
     }
@@ -249,7 +262,10 @@ export default function HomePage() {
       // Auto-refresh Gmail imports after a short delay (1 sec)
       // This gives the page time to show cached data first
       const timer = setTimeout(() => {
-        refreshGmailData().catch(() => {
+        refreshGmailData({
+          silentIfNotConnected: true,
+          silentErrors: true,
+        }).catch(() => {
           // Silent fail if Gmail not connected or error occurs
           // User will still see cached expenses
         });
@@ -610,61 +626,63 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="min-h-screen overflow-x-hidden">
+      <div className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-4 sm:py-6">
         {/* Header with Cinnamoroll theme */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="cinnamoroll-card mb-6 bg-cover bg-center p-6"
+          className="cinnamoroll-card mb-6 overflow-hidden bg-cover bg-center p-4 sm:p-6"
           style={{
             backgroundImage:
               "url('/assets/cinamoroll_theme/background/CategoryBannerBackground.png')",
           }}
         >
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-[#B2D7FF] rounded-2xl shadow-lg">
-                <Wallet className="h-7 w-7 text-white" />
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="shrink-0 rounded-2xl bg-[#B2D7FF] p-3 shadow-lg">
+                <Wallet className="h-6 w-6 text-white sm:h-7 sm:w-7" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#859BB2]">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-[#859BB2] sm:text-3xl">
                   {t("ledger")}
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="max-w-[14rem] text-sm leading-snug text-gray-600 dark:text-gray-400 sm:max-w-none">
                   {t("ledgerSubtitle")}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
               <Button
-                onClick={refreshGmailData}
+                onClick={() => refreshGmailData()}
                 disabled={gmailRefreshing}
                 variant="outline"
                 size="sm"
-                className="hover:bg-[#E1EDFD] dark:hover:bg-slate-700"
+                className="min-w-0 justify-center hover:bg-[#E1EDFD] dark:hover:bg-slate-700"
               >
                 <RefreshCw
-                  className={`mr-2 h-4 w-4 ${gmailRefreshing ? "animate-spin" : ""}`}
+                  className={`h-4 w-4 shrink-0 sm:mr-2 ${gmailRefreshing ? "animate-spin" : ""}`}
                 />
-                {gmailRefreshing ? t("refreshing") : t("refreshGmail")}
+                <span className="ml-2 truncate sm:ml-0">
+                  {gmailRefreshing ? t("refreshing") : t("refreshGmail")}
+                </span>
               </Button>
               <Button
                 onClick={() => setReceiptDialogOpen(true)}
                 variant="outline"
                 size="sm"
-                className="border-[#D4E5F7] bg-white/75 text-[#859BB2] hover:bg-[#E1EDFD]"
+                className="min-w-0 justify-center border-[#D4E5F7] bg-white/75 text-[#859BB2] hover:bg-[#E1EDFD]"
               >
-                <ReceiptText className="mr-2 h-4 w-4" />
-                {t("scanReceipt")}
+                <ReceiptText className="h-4 w-4 shrink-0 sm:mr-2" />
+                <span className="ml-2 truncate sm:ml-0">{t("scanReceipt")}</span>
               </Button>
               <Button
                 onClick={openCreateDialog}
-                className="cinnamoroll-button bg-[#B2D7FF] hover:bg-[#9AC4E7] text-white shadow-lg"
+                className="cinnamoroll-button col-span-2 min-w-0 justify-center bg-[#B2D7FF] text-white shadow-lg hover:bg-[#9AC4E7] sm:col-span-1"
               >
-                <Plus className="mr-2 h-4 w-4" />
-                {t("addRecord")}
+                <Plus className="h-4 w-4 shrink-0 sm:mr-2" />
+                <span className="ml-2 truncate sm:ml-0">{t("addRecord")}</span>
               </Button>
             </div>
           </div>
@@ -702,7 +720,7 @@ export default function HomePage() {
                     setMonthFilter(`${year}-${currentMonth}`)
                   }
                 >
-                  <SelectTrigger className="w-32 shrink-0 rounded-xl border-[#D4E5F7] bg-white/75 text-[#334155] shadow-sm sm:w-40">
+                  <SelectTrigger className="min-w-0 flex-1 rounded-xl border-[#D4E5F7] bg-white/75 text-[#334155] shadow-sm sm:w-40 sm:flex-none">
                     <SelectValue placeholder="Select Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -720,7 +738,7 @@ export default function HomePage() {
                     setMonthFilter(`${currentYear}-${month}`)
                   }
                 >
-                  <SelectTrigger className="w-36 shrink-0 rounded-xl border-[#D4E5F7] bg-white/75 text-[#334155] shadow-sm sm:w-44">
+                  <SelectTrigger className="min-w-0 flex-1 rounded-xl border-[#D4E5F7] bg-white/75 text-[#334155] shadow-sm sm:w-44 sm:flex-none">
                     <SelectValue placeholder="Select Month" />
                   </SelectTrigger>
                   <SelectContent>
@@ -733,7 +751,7 @@ export default function HomePage() {
                 </Select>
 
                 {/* Family Filter Toggle */}
-                <div className="flex flex-wrap gap-2 ml-auto">
+                <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
                   {(["personal", "family", "all"] as const).map((value) => {
                     const isNonPremium =
                       value === "family" &&
@@ -755,7 +773,7 @@ export default function HomePage() {
                               }
                             : undefined
                         }
-                        className={`rounded-xl flex items-center gap-1 ${
+                        className={`flex min-w-[7rem] items-center justify-center gap-1 rounded-xl px-4 sm:min-w-0 ${
                           isNonPremium
                             ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-500 hover:bg-gray-100"
                             : familyFilter === value
