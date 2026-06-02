@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 
@@ -18,8 +18,8 @@ async function getCurrentUser(request: Request) {
 
 // GET /api/families/[id] - get family details
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getCurrentUser(request);
 
@@ -28,8 +28,9 @@ export async function GET(
   }
 
   try {
+    const { id } = await params;
     const family = await prisma.family.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         owner: { select: { id: true, email: true } },
         members: {
@@ -71,8 +72,8 @@ export async function GET(
 
 // DELETE /api/families/[id] - delete family (owner only)
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getCurrentUser(request);
 
@@ -81,8 +82,9 @@ export async function DELETE(
   }
 
   try {
+    const { id } = await params;
     const family = await prisma.family.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!family) {
@@ -101,7 +103,7 @@ export async function DELETE(
 
     // Delete family (cascade takes care of members and expenses)
     await prisma.family.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

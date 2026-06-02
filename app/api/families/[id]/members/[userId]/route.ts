@@ -16,10 +16,10 @@ async function getCurrentUser(request: Request) {
   return user;
 }
 
-// POST /api/families/[id]/leave - user leaves family
-export async function POST(
+// DELETE /api/families/[id]/members/[userId] - remove member
+export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string; userId: string }> },
 ) {
   const user = await getCurrentUser(request);
 
@@ -28,42 +28,31 @@ export async function POST(
   }
 
   try {
-    const { id } = await params;
+    const { id, userId } = await params;
     const family = await prisma.family.findUnique({
       where: { id },
     });
 
     if (!family) {
-      return NextResponse.json(
-        { error: "Family not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Family not found" }, { status: 404 });
     }
 
-    // Check if user is a member
-    const userInFamily = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { familyId: true },
-    });
-
-    if (userInFamily?.familyId !== family.id) {
+    if (family.ownerId !== user.id) {
       return NextResponse.json(
-        { error: "You are not a member of this family" },
+        { error: "Only family owner can remove members" },
         { status: 403 },
       );
     }
 
-    // Can't leave if you're the owner (unless it's the last operation)
-    if (family.ownerId === user.id) {
+    if (userId === family.ownerId) {
       return NextResponse.json(
-        { error: "Owner must delete the family, not leave it. Remove all other members first." },
+        { error: "Cannot remove family owner" },
         { status: 400 },
       );
     }
 
-    // Leave family
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: userId },
       data: {
         familyId: null,
       },
@@ -71,9 +60,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error leaving family:", error);
+    console.error("Error removing member:", error);
     return NextResponse.json(
-      { error: "Failed to leave family" },
+      { error: "Failed to remove member" },
       { status: 500 },
     );
   }

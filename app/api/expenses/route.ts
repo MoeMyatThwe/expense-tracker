@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { expenseCreateSchema } from "@/lib/validation";
+
+type FamilyExpenseWithEmail = Prisma.FamilyExpenseGetPayload<{
+  include: {
+    family: { select: { id: true; name: true } };
+  };
+}> & {
+  createdByEmail: string;
+};
 
 // Helper to get current user
 async function getCurrentUser(request: Request) {
@@ -40,9 +49,9 @@ export async function GET(request: Request) {
     });
 
     // Get family expenses if user is in a family
-    let familyExpenses = [];
+    let familyExpenses: FamilyExpenseWithEmail[] = [];
     if (userWithFamily?.familyId) {
-      familyExpenses = await prisma.familyExpense.findMany({
+      const rawFamilyExpenses = await prisma.familyExpense.findMany({
         where: { familyId: userWithFamily.familyId },
         orderBy: { date: "desc" },
         include: {
@@ -51,15 +60,19 @@ export async function GET(request: Request) {
       });
 
       // Get creator emails for family expenses
-      const creatorIds = [...new Set(familyExpenses.map((e) => e.createdByUserId))];
+      const creatorIds = [
+        ...new Set(rawFamilyExpenses.map((e) => e.createdByUserId)),
+      ];
       const creators = await prisma.user.findMany({
         where: { id: { in: creatorIds } },
         select: { id: true, email: true },
       });
-      const creatorMap = Object.fromEntries(creators.map((c) => [c.id, c.email]));
+      const creatorMap = Object.fromEntries(
+        creators.map((c) => [c.id, c.email]),
+      );
 
       // Map creator emails to expenses
-      familyExpenses = familyExpenses.map((e) => ({
+      familyExpenses = rawFamilyExpenses.map((e) => ({
         ...e,
         createdByEmail: creatorMap[e.createdByUserId] || "Unknown",
       }));

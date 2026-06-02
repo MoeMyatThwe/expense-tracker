@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import crypto from "crypto";
 
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -19,8 +18,8 @@ async function getCurrentUser(request: Request) {
 
 // GET /api/families/[id]/members - list family members
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getCurrentUser(request);
 
@@ -29,8 +28,9 @@ export async function GET(
   }
 
   try {
+    const { id } = await params;
     const family = await prisma.family.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         members: {
           select: {
@@ -69,8 +69,8 @@ export async function GET(
 
 // POST /api/families/[id]/members - add member by email
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getCurrentUser(request);
 
@@ -79,6 +79,7 @@ export async function POST(
   }
 
   try {
+    const { id } = await params;
     // Check premium membership
     const membership = await prisma.membership.findUnique({
       where: { userId: user.id },
@@ -98,7 +99,7 @@ export async function POST(
     }
 
     const family = await prisma.family.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { members: true },
     });
 
@@ -163,59 +164,5 @@ export async function POST(
     }
 
     return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
-}
-
-// DELETE /api/families/[id]/members/[userId] - remove member
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; userId: string } },
-) {
-  const user = await getCurrentUser(request);
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const family = await prisma.family.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!family) {
-      return NextResponse.json({ error: "Family not found" }, { status: 404 });
-    }
-
-    // Only owner can remove members
-    if (family.ownerId !== user.id) {
-      return NextResponse.json(
-        { error: "Only family owner can remove members" },
-        { status: 403 },
-      );
-    }
-
-    // Can't remove owner
-    if (params.userId === family.ownerId) {
-      return NextResponse.json(
-        { error: "Cannot remove family owner" },
-        { status: 400 },
-      );
-    }
-
-    // Remove member
-    await prisma.user.update({
-      where: { id: params.userId },
-      data: {
-        familyId: null,
-      },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error removing member:", error);
-    return NextResponse.json(
-      { error: "Failed to remove member" },
-      { status: 500 },
-    );
   }
 }
