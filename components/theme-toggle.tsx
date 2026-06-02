@@ -1,53 +1,42 @@
 "use client";
 
-import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { setTheme, theme } = useTheme();
+  const activeTheme = theme || "light";
+  const options = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+  ] as const;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="cinnamoroll-button border-[#D4E5F7] hover:bg-[#E1EDFD] dark:border-[#B2D7FF] dark:hover:bg-[#B2D7FF]/20"
-        >
-          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-[#859BB2]" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-[#859BB2]" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="rounded-xl border-[#D4E5F7]">
-        <DropdownMenuItem
-          onClick={() => setTheme("light")}
-          className="rounded-lg"
-        >
-          ☀️ Light
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => setTheme("dark")}
-          className="rounded-lg"
-        >
-          🌙 Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => setTheme("system")}
-          className="rounded-lg"
-        >
-          💻 System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-[#E1EDFD] bg-white/80 p-1 sm:w-auto">
+      {options.map((option) => {
+        const Icon = option.icon;
+        const isActive = activeTheme === option.value;
+
+        return (
+          <Button
+            key={option.value}
+            type="button"
+            variant="ghost"
+            onClick={() => setTheme(option.value)}
+            aria-pressed={isActive}
+            className={`h-10 rounded-xl px-4 font-semibold ${
+              isActive
+                ? "bg-[#B2D7FF] text-white shadow-sm hover:bg-[#9AC4E7]"
+                : "text-[#859BB2] hover:bg-[#E1EDFD]"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {option.label}
+          </Button>
+        );
+      })}
+    </div>
   );
 }
