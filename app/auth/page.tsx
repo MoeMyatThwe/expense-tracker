@@ -186,7 +186,9 @@ function AuthPageContent() {
               alt="Cinnamoroll Expense Tracker"
               width={320}
               height={320}
-              className="object-contain"
+              priority
+              loading="eager"
+              className="h-auto w-[320px] object-contain"
             />
           </motion.div>
         </div>
@@ -278,6 +280,7 @@ function AuthPageContent() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -297,6 +300,9 @@ function AuthPageContent() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete={
+                    tab === "signin" ? "current-password" : "new-password"
+                  }
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -508,6 +514,7 @@ function AuthPageContent() {
                         <Input
                           id="forgot-email"
                           type="email"
+                          autoComplete="email"
                           placeholder="you@example.com"
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}

@@ -32,7 +32,47 @@ async function ensureAppUser(user: { id: string; email?: string | null }) {
   });
 }
 
+function createEmptyStats(selectedDate: Date) {
+  const requestedYear = selectedDate.getFullYear();
+  const lastMonthDate = subMonths(selectedDate, 1);
+  const monthlyData = Array.from({ length: 12 }, (_, index) => {
+    const monthStart = startOfMonth(new Date(requestedYear, index, 1));
+    return {
+      name: format(monthStart, "MMM"),
+      month: format(monthStart, "MMMM"),
+      year: format(monthStart, "yyyy"),
+      value: 0,
+    };
+  });
+
+  return {
+    totalThisMonth: 0,
+    totalLastMonth: 0,
+    change: "0.0",
+    trend: "up",
+    expenseCount: 0,
+    categoryData: [],
+    yearlyData: [],
+    monthlyData,
+    monthlyCategoryData: monthlyData.map((item) => ({
+      month: item.month,
+      year: item.year,
+      categories: [],
+    })),
+    currentMonth: format(selectedDate, "MMMM yyyy"),
+    selectedMonth: format(selectedDate, "MMMM"),
+    selectedYear: format(selectedDate, "yyyy"),
+    lastMonth: format(lastMonthDate, "MMMM yyyy"),
+  };
+}
+
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const now = new Date();
+  const requestedYear = Number(searchParams.get("year")) || now.getFullYear();
+  const requestedMonth = Number(searchParams.get("month")) || now.getMonth() + 1;
+  const selectedDate = new Date(requestedYear, requestedMonth - 1, 1);
+
   try {
     const user = await getCurrentUser(request);
 
@@ -42,12 +82,6 @@ export async function GET(request: Request) {
 
     await ensureAppUser(user);
 
-    const { searchParams } = new URL(request.url);
-    const now = new Date();
-    const requestedYear = Number(searchParams.get("year")) || now.getFullYear();
-    const requestedMonth =
-      Number(searchParams.get("month")) || now.getMonth() + 1;
-    const selectedDate = new Date(requestedYear, requestedMonth - 1, 1);
     const currentMonthStart = startOfMonth(selectedDate);
     const currentMonthEnd = endOfMonth(selectedDate);
     const lastMonthDate = subMonths(selectedDate, 1);
@@ -226,9 +260,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch statistics" },
-      { status: 500 },
-    );
+    return NextResponse.json(createEmptyStats(selectedDate));
   }
 }

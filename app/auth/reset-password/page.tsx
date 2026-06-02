@@ -76,7 +76,9 @@ export default function ResetPasswordPage() {
               alt="Cinnamoroll Expense Tracker"
               width={220}
               height={220}
-              className="object-contain"
+              priority
+              loading="eager"
+              className="h-auto w-[220px] object-contain"
             />
           </motion.div>
         </div>
@@ -109,6 +111,7 @@ export default function ResetPasswordPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="rounded-xl border-2 focus:ring-0 pr-10"
@@ -136,6 +139,7 @@ export default function ResetPasswordPage() {
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="rounded-xl border-2 focus:ring-0 pr-10"

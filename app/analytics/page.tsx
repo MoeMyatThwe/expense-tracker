@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { BarChart3 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/app/contexts/auth-context";
 import { supabase } from "@/lib/supabase";
 import { ExpenseCharts } from "@/components/expense-charts";
@@ -155,7 +154,6 @@ export default function AnalyticsPage() {
       setStats(await response.json());
     } catch (error) {
       setStats(createEmptyStats(selectedYear, selectedMonth));
-      toast.error("Failed to load analytics");
     } finally {
       setLoading(false);
     }

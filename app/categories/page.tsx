@@ -9,6 +9,7 @@ import { useAuth } from "@/app/contexts/auth-context";
 import { supabase } from "@/lib/supabase";
 import {
   CATEGORY_ICONS,
+  DEFAULT_CATEGORIES,
   formatCategoryIconName,
   formatCategoryName,
   type CategoryOption,
@@ -91,12 +92,13 @@ export default function CategoriesPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to load categories");
+        setCategories(DEFAULT_CATEGORIES);
+        return;
       }
 
       setCategories(await response.json());
     } catch (error) {
-      toast.error("Failed to load categories");
+      setCategories(DEFAULT_CATEGORIES);
     } finally {
       setLoading(false);
     }

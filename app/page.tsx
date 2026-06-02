@@ -231,6 +231,14 @@ export default function HomePage() {
         throw new Error("Failed to refresh Gmail data");
       }
 
+      const result = await response.json().catch(() => null);
+      if (result?.needsConnection) {
+        if (!options.silentIfNotConnected) {
+          toast.info("Connect Gmail in Settings to import PayNow records");
+        }
+        return;
+      }
+
       if (!options.silentErrors) {
         toast.success("Gmail data refreshed! Reloading...");
       }
@@ -323,7 +331,6 @@ export default function HomePage() {
       setExpenses(allExpenses);
     } catch (error) {
       console.error("Failed to fetch expenses:", error);
-      toast.error("Failed to fetch expenses");
       setExpenses([]);
     } finally {
       setLoading(false);

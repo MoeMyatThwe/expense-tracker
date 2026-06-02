@@ -225,8 +225,8 @@ export async function GET(req: NextRequest) {
     if (err && err.message) {
       if (err.message.includes("Gmail is not connected")) {
         return NextResponse.json(
-          { error: err.message, needsConnection: true },
-          { status: 401 },
+          { expenses: [], needsConnection: true, connected: false },
+          { status: 200 },
         );
       }
       return NextResponse.json({ error: err.message }, { status: 500 });
