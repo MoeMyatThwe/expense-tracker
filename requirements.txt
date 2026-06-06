@@ -1,2 +1,0 @@
-rapidocr-onnxruntime==1.4.4
-pillow>=12.2.0

@@ -46,6 +46,8 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   bills: ["bill", "electric", "water", "telco", "singtel", "starhub", "m1"],
 };
 
+const OCR_ENGINE = "tesseract-js";
+
 async function getCurrentUser(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -285,10 +287,19 @@ export async function POST(request: Request) {
     const result = await runTesseractOcr(tempPath);
 
     if (!result.success) {
-      return NextResponse.json(result, { status: 422 });
+      return NextResponse.json(
+        { ...result, ocrEngine: OCR_ENGINE },
+        {
+          status: 422,
+          headers: { "X-OCR-Engine": OCR_ENGINE },
+        },
+      );
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(
+      { ...result, ocrEngine: OCR_ENGINE },
+      { headers: { "X-OCR-Engine": OCR_ENGINE } },
+    );
   } catch (error: unknown) {
     console.error("[Receipt Scan] Error:", error);
     return NextResponse.json(
@@ -303,4 +314,15 @@ export async function POST(request: Request) {
   } finally {
     await unlink(tempPath).catch(() => undefined);
   }
+}
+
+export async function GET() {
+  return NextResponse.json(
+    {
+      ok: true,
+      ocrEngine: OCR_ENGINE,
+      pythonEnabled: false,
+    },
+    { headers: { "X-OCR-Engine": OCR_ENGINE } },
+  );
 }
