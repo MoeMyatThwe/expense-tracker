@@ -1057,7 +1057,7 @@ The page is called the ledger because it does more than expenses. It also suppor
 - Supabase PostgreSQL: Stores personal expenses, family expenses, categories, and user records.
 - Zod: Validates expense create and update payloads.
 - Google Gmail API: Imports PayNow records from Gmail.
-- Python OCR with RapidOCR ONNX Runtime: Extracts receipt text from uploaded receipt images.
+- tesseract.js: Extracts receipt text from uploaded receipt images inside the Next.js API route.
 
 ## Important Note About Speech-to-Text
 
@@ -1099,8 +1099,7 @@ The app can extract:
 - `app/api/expenses/route.ts`: Fetches and creates expenses.
 - `app/api/expenses/[id]/route.ts`: Updates and deletes expenses.
 - `app/api/gmail-expenses/route.ts`: Imports PayNow Gmail transactions into expense records.
-- `app/api/receipt-scan/route.ts`: Receives receipt image uploads and calls the Python OCR script.
-- `scripts/receipt_ocr.py`: Runs RapidOCR and extracts receipt amount, merchant, date, category, and line items.
+- `app/api/receipt-scan/route.ts`: Receives receipt image uploads, runs `tesseract.js`, and extracts receipt amount, merchant, date, category, and line items.
 - `lib/validation.ts`: Validates expense create and update data.
 - `prisma/schema.prisma`: Defines `Expense` and `FamilyExpense`.
 
@@ -1418,10 +1417,10 @@ The expense page also has a Scan Receipt button.
 This feature uses:
 
 ```txt
-Python + RapidOCR ONNX Runtime + custom regex/category parsing
+JavaScript OCR with tesseract.js + custom regex/category parsing
 ```
 
-It does not use an LLM model in the current code.
+It does not use an LLM model or a separate Python service in the current code.
 
 ### Step-by-Step Flow: Receipt Scan
 
@@ -1443,13 +1442,9 @@ It does not use an LLM model in the current code.
 
 7. The backend temporarily saves the image.
 
-8. The backend runs the Python OCR script:
+8. The backend runs OCR using `tesseract.js` directly inside the Next.js API route.
 
-   ```txt
-   scripts/receipt_ocr.py
-   ```
-
-9. The Python script uses RapidOCR to read text from the image.
+9. `tesseract.js` reads text from the image.
 
 10. The script extracts:
 
@@ -1501,7 +1496,7 @@ For creating records, users can type the data manually or use speech input. For 
 
 For PayNow import, the app uses the Gmail API. After the user connects Gmail from settings, the expense page can refresh Gmail, search for PayNow transaction emails, parse the amount/date/merchant, and save them as expense records. To avoid duplicates, the app stores the Gmail message ID.
 
-For receipt scanning, I use a Python OCR pipeline with RapidOCR ONNX Runtime. The backend temporarily saves the receipt image, runs the OCR script, extracts merchant, amount, date, category, and possible line items, then lets the user choose which items to import.
+For receipt scanning, I use a JavaScript OCR pipeline with `tesseract.js`. The backend temporarily saves the receipt image, runs OCR inside the same Next.js API route, extracts merchant, amount, date, category, and possible line items, then lets the user choose which items to import.
 
 On the backend, all expense actions go through Next.js API routes. The routes verify the Supabase access token, validate the request with Zod, and then use Prisma to create, update, delete, or fetch records from the Supabase PostgreSQL database.
 

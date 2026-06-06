@@ -163,7 +163,7 @@ The page is called the ledger because it does more than expenses. It also suppor
 - Supabase PostgreSQL: Stores personal expenses, family expenses, categories, and user records.
 - Zod: Validates expense create and update payloads.
 - Google Gmail API: Imports PayNow records from Gmail.
-- Python OCR with RapidOCR ONNX Runtime: Extracts receipt text from uploaded receipt images.
+- tesseract.js: Extracts receipt text from uploaded receipt images inside the Next.js API route.
 
 ## Important Note About Speech-to-Text
 
@@ -171,12 +171,11 @@ For speech-to-text, this app does **not** use a custom AI model or an OpenAI mod
 
 It uses the browser's built-in Web Speech API:
 
-RapidOCR reads text from receipt images.
-ONNX Runtime runs the OCR model efficiently.
-Your Python script then uses regex and custom logic to extract receipt total, date, merchant, category, and item lines.
+tesseract.js reads text from receipt images in JavaScript.
+The Next.js API route then uses regex and custom logic to extract receipt total, date, merchant, category, and item lines.
 So for presentation, you can say:
 
-For receipt scanning, I use the rapidocr-onnxruntime Python OCR library. It extracts text from the receipt image, then my script parses the OCR text to find the merchant, amount, date, and items.
+For receipt scanning, I use the `tesseract.js` JavaScript OCR library. It extracts text from the receipt image, then my API route parses the OCR text to find the merchant, amount, date, and items.
 
 #------------------------
 

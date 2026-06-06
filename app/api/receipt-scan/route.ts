@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { execFile } from "child_process";
-import { promisify } from "util";
 import os from "os";
 import path from "path";
 import { writeFile, unlink } from "fs/promises";
 import { createWorker } from "tesseract.js";
 import { supabase } from "@/lib/supabase";
 
-const execFileAsync = promisify(execFile);
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const PYTHON_NOT_FOUND_MESSAGE =
-  "Python is not available on the server. Configure PYTHON_PATH to a Python executable and install: python -m pip install -r requirements.txt";
 const AMOUNT_PATTERN =
   /(?:S\$|\$)?\s*([+-]?[0-9]+(?:[,.][0-9]{3})*(?:\.[0-9]{2})|[+-]?[0-9]+\.[0-9]{2})/g;
 
@@ -65,24 +60,6 @@ async function getCurrentUser(request: Request) {
   return user;
 }
 
-function getPythonCommands() {
-  return [
-    process.env.PYTHON_PATH ? { command: process.env.PYTHON_PATH, args: [] } : null,
-    { command: "python", args: [] },
-    { command: "python3", args: [] },
-    { command: "py", args: ["-3"] },
-  ].filter(Boolean) as { command: string; args: string[] }[];
-}
-
-function isMissingExecutableError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "ENOENT"
-  );
-}
-
 function normalizeLine(line: string) {
   return line.replace(/\s+/g, " ").trim();
 }
@@ -98,7 +75,13 @@ function cleanAmount(value: string) {
 }
 
 function extractTotal(lines: string[]) {
-  const totalKeywords = ["grand total", "total amount", "amount due", "net total", "total"];
+  const totalKeywords = [
+    "grand total",
+    "total amount",
+    "amount due",
+    "net total",
+    "total",
+  ];
   const ignoreKeywords = [
     "subtotal",
     "sub total",
@@ -157,7 +140,14 @@ function extractDate(lines: string[]) {
 }
 
 function extractMerchant(lines: string[]) {
-  const noisy = ["receipt", "tax invoice", "invoice", "gst", "duplicate", "customer copy"];
+  const noisy = [
+    "receipt",
+    "tax invoice",
+    "invoice",
+    "gst",
+    "duplicate",
+    "customer copy",
+  ];
   const merchant = lines
     .slice(0, 8)
     .find((line) => {
@@ -251,31 +241,6 @@ async function runTesseractOcr(tempPath: string) {
   }
 }
 
-async function runReceiptOcr(scriptPath: string, tempPath: string) {
-  const errors: string[] = [];
-
-  for (const python of getPythonCommands()) {
-    try {
-      return await execFileAsync(
-        python.command,
-        [...python.args, scriptPath, tempPath],
-        {
-          timeout: 60000,
-          maxBuffer: 1024 * 1024 * 4,
-        },
-      );
-    } catch (error) {
-      if (!isMissingExecutableError(error)) {
-        throw error;
-      }
-
-      errors.push(python.command);
-    }
-  }
-
-  throw new Error(`${PYTHON_NOT_FOUND_MESSAGE} Tried: ${errors.join(", ")}`);
-}
-
 export async function POST(request: Request) {
   const user = await getCurrentUser(request);
 
@@ -287,7 +252,10 @@ export async function POST(request: Request) {
   const file = formData.get("receipt");
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Receipt image is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Receipt image is required" },
+      { status: 400 },
+    );
   }
 
   if (!ALLOWED_TYPES.has(file.type)) {
@@ -305,32 +273,16 @@ export async function POST(request: Request) {
   }
 
   const extension = file.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
-  const tempPath = path.join(os.tmpdir(), `receipt-${randomUUID()}.${extension}`);
+  const tempPath = path.join(
+    os.tmpdir(),
+    `receipt-${randomUUID()}.${extension}`,
+  );
 
   try {
     const bytes = await file.arrayBuffer();
     await writeFile(tempPath, Buffer.from(bytes));
 
-    const scriptPath = path.join(process.cwd(), "scripts", "receipt_ocr.py");
-    let stdout = "";
-    try {
-      const result = await runReceiptOcr(scriptPath, tempPath);
-      stdout = result.stdout;
-    } catch (error) {
-      if (!isMissingExecutableError(error)) {
-        const message = error instanceof Error ? error.message : "";
-        if (!message.includes(PYTHON_NOT_FOUND_MESSAGE)) {
-          throw error;
-        }
-      }
-
-      const result = await runTesseractOcr(tempPath);
-      return NextResponse.json(result, { status: result.success ? 200 : 422 });
-    }
-
-    const jsonStart = stdout.indexOf("{");
-    const jsonText = jsonStart >= 0 ? stdout.slice(jsonStart) : stdout;
-    const result = JSON.parse(jsonText);
+    const result = await runTesseractOcr(tempPath);
 
     if (!result.success) {
       return NextResponse.json(result, { status: 422 });
